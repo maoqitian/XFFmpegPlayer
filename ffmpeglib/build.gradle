@@ -15,20 +15,16 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
 
-        //ndk so架构的选择
         externalNativeBuild {
-            ndk {
+            cmake {
+                cppFlags ""
                 abiFilters 'armeabi-v7a'
             }
         }
-
-        //so查找路径
-        sourceSets {
-            main {
-                jniLibs.srcDirs = ['libs']
-            }
+        ndk {
+            // 设置支持的SO库架构
+            abiFilters 'armeabi-v7a'//,'x86'//,'armeabi-v7a','x86','x86_64','arm64-v8a'
         }
-
     }
 
     buildTypes {
@@ -38,10 +34,16 @@ android {
         }
     }
 
+    /*//so查找路径
+    sourceSets.main {
+        jniLibs.srcDir 'libs'
+    }*/
+
     //cmake文件的查找路径
     externalNativeBuild {
         cmake {
-            path file('CMakeLists.txt')
+            path 'CMakeLists.txt'
+            version "3.10.2"
         }
     }
     ndkVersion '21.0.6113669'
