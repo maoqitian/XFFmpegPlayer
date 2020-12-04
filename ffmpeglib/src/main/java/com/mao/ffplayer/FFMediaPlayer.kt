@@ -4,8 +4,11 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import android.util.Log
+import android.view.Surface
 import android.view.SurfaceHolder
 import com.mao.ffplayer.constant.PlayerConstants
+import java.io.File
+import java.io.IOException
 import java.lang.ref.WeakReference
 
 /**
@@ -30,8 +33,9 @@ class FFMediaPlayer {
     var mOnPreparedListener: OnPreparedListener? = null
     var mOnCompletionListener: OnCompletionListener? = null
     var mOnErrorListener: OnErrorListener ? = null
-    private val mSurfaceHolder: SurfaceHolder? = null
-    private val mEventHandler: EventHandler? = null
+    private var mSurfaceHolder: SurfaceHolder? = null
+    var surface: Surface? = null
+    private var mEventHandler: EventHandler? = null
 
     companion object {
         init {
@@ -61,18 +65,69 @@ class FFMediaPlayer {
 
         }
     }
+
     init {
         native_init()
 
+        mEventHandler = Looper.myLooper()?.let { EventHandler(this, it) }
+        mEventHandler = Looper.getMainLooper()?.let { EventHandler(this, it) }
+
+        native_setup(WeakReference<FFMediaPlayer>(this))
+    }
+
+    fun setDisPlay(holder: SurfaceHolder?){
+        mSurfaceHolder = holder
+        if (holder!=null){
+            surface = holder.surface
+        }
+        surface?.let { native_setSurface(it) }
+    }
+
+    fun setDataSource( path:String){
+        val file = File(path)
+        if(file.exists()){
+            native_setDataSource(path)
+        } else {
+            throw IOException("setDataSource failed.")
+        }
+    }
+
+    fun prepareAsync(){
+        native_prepareAsync()
+    }
+    fun start(){
+       native_start()
+    }
+    fun pause(){
+       native_pause()
+    }
+
+    fun stop(){
+        native_pause()
+    }
+
+    fun reset(){
+        native_reset()
+        mEventHandler?.removeCallbacksAndMessages(null)
+    }
+
+    fun release(){
+        mOnPreparedListener = null
+        mOnCompletionListener = null
+        mOnErrorListener = null
+
+        native_release()
     }
 
     //Jni 层回调的函数
     private fun postEventFromNative(mediaplayer_ref: Any, what: Int, arg1: Int, arg2: Int) {
+        val mp: FFMediaPlayer = (mediaplayer_ref as WeakReference<*>).get() as FFMediaPlayer? ?: return
 
+        if (mp.mEventHandler != null) {
+            val m: Message = mp.mEventHandler!!.obtainMessage(what, arg1, arg2)
+            mp.mEventHandler!!.sendMessage(m)
+        }
     }
-
-
-
 
 
     interface OnPreparedListener {
