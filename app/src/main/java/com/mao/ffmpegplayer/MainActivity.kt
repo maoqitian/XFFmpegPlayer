@@ -1,8 +1,12 @@
 package com.mao.ffmpegplayer
 
+import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.permissionx.guolindev.PermissionX
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity(),View.OnClickListener{
@@ -17,7 +21,16 @@ class MainActivity : AppCompatActivity(),View.OnClickListener{
         button3.setOnClickListener(this)
         button4.setOnClickListener(this)
         button5.setOnClickListener(this)
-
+        player.setOnClickListener(this)
+        PermissionX.init(this)
+            .permissions(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            .request { allGranted, grantedList, deniedList ->
+                if (allGranted) {
+                    Toast.makeText(this, "All permissions are granted", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "These permissions are denied: $deniedList", Toast.LENGTH_LONG).show()
+                }
+            }
     }
     override fun onClick(v: View) {
          when(v.id){
@@ -26,6 +39,7 @@ class MainActivity : AppCompatActivity(),View.OnClickListener{
                  R.id.button3 -> tvText.text = avcodecInfo()
                  R.id.button4 -> tvText.text = avfilterInfo()
                  R.id.button5 -> tvText.text = configurationInfo()
+                 R.id.player -> startActivity(Intent(this,PlayerActivity::class.java))
          }
     }
 

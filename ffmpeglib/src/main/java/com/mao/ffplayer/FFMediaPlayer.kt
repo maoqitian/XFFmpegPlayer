@@ -58,6 +58,10 @@ class FFMediaPlayer {
                         if (mp != null) {
                             mp.mOnCompletionListener?.onCompletion(mp)
                         }
+                    PlayerConstants.MEDIA_ERROR ->
+                        if (mp != null) {
+                            mp.mOnErrorListener?.onError(mp,msg.what,msg.arg1)
+                        }
                     else -> { Log.e("", "Unknown message type " + msg.what)
                     }
                 }
@@ -103,7 +107,7 @@ class FFMediaPlayer {
     }
 
     fun stop(){
-        native_pause()
+        native_stop()
     }
 
     fun reset(){
@@ -139,7 +143,7 @@ class FFMediaPlayer {
     }
 
     interface OnErrorListener {
-        fun onError(mp: FFMediaPlayer?, what: Int, extra: Int): Boolean
+        fun onError(mp: FFMediaPlayer?, what: Int, extra: Int)
     }
 
     fun setOnErrorListener(listener: OnErrorListener) {
