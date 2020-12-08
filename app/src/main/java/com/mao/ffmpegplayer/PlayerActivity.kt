@@ -53,9 +53,14 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
             }
 
             override fun surfaceCreated(holder: SurfaceHolder) {
-                surfaceHolder = holder
-                mediaPlayer.setDisPlay(surfaceHolder)
-                preparePlayer()
+                Thread(Runnable {
+                    run {
+                        surfaceHolder = holder
+                        mediaPlayer.setDisPlay(surfaceHolder)
+                        preparePlayer()
+                    }
+                }).start()
+
             }
         })
     }
