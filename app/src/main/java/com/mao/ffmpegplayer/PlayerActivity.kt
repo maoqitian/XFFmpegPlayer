@@ -53,13 +53,13 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
             }
 
             override fun surfaceCreated(holder: SurfaceHolder) {
-                Thread(Runnable {
+               /* Thread(Runnable {
                     run {
                         surfaceHolder = holder
                         mediaPlayer.setDisPlay(surfaceHolder)
                         preparePlayer()
                     }
-                }).start()
+                }).start()*/
 
             }
         })
@@ -96,6 +96,7 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
             R.id.start -> mediaPlayer.start()
             R.id.pause -> mediaPlayer.pause()
             R.id.stop -> mediaPlayer.stop()
+            R.id.prepare -> mediaPlayer.playVideo("",surfaceView.holder.surface)
         }
     }
 

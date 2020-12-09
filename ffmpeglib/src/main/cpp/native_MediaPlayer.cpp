@@ -5,6 +5,9 @@
 #include <jni.h>
 #include <assert.h>
 #include <android/log.h>
+#include "libswscale/swscale.h"
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
 #include <memory>
 #include <mutex>
 #include <android/native_window.h>
@@ -357,6 +360,23 @@ static void com_mao_ffplayer_FFMediaPlayer_native_pause(JNIEnv *env, jobject thi
 
 }
 
+//测试视频播放流程
+static jint com_mao_ffplayer_FFMediaPlayer_native_playVideo(JNIEnv *env, jobject thiz,jstring url, jstring surface) {
+    ALOGI("native_playVideo");
+    const char *dataSource = env->GetStringUTFChars(url, 0);
+    ALOGW("start playvideo... url, %s", dataSource);
+   /* av_register_all();
+
+    AVFormatContext * mFormatCtx = avformat_alloc_context();
+
+    //打开文件
+    if(avformat_open_input(&mFormatCtx,dataSource,NULL,NULL)!=0){
+        ALOGE("Couldn't open file:%s\n", dataSource);
+        return -1;
+    }*/
+    return 0;
+}
+
 //动态注册 native 方法
 static JNINativeMethod gMethods[] = {
         {"native_init",         "()V",                              (void *)com_mao_ffplayer_FFMediaPlayer_native_init},
@@ -370,6 +390,7 @@ static JNINativeMethod gMethods[] = {
         {"native_reset",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_reset},
         {"native_release",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_release},
         {"native_pause",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_pause},
+        {"native_playVideo",        "(Ljava/lang/String;Ljava/lang/Object;)V",  (void *)com_mao_ffplayer_FFMediaPlayer_native_playVideo},
 };
 
 static int registerNativeMethods(JNIEnv* env, const char* className, JNINativeMethod* gMethods, int methodsNum) {

@@ -123,6 +123,11 @@ class FFMediaPlayer {
         native_release()
     }
 
+    //测试播放视频方法
+    fun playVideo( url:String, surface:Surface){
+        native_playVideo(url,surface)
+    }
+
     //Jni 层回调的函数
     private fun postEventFromNative(mediaplayer_ref: Any, what: Int, arg1: Int, arg2: Int) {
         val mp: FFMediaPlayer = (mediaplayer_ref as WeakReference<*>).get() as FFMediaPlayer? ?: return
@@ -179,5 +184,8 @@ class FFMediaPlayer {
 
     @Throws(IllegalStateException::class)
     private external fun native_pause()
+
+    //测试视频播放流程
+    external fun native_playVideo(url: String?, surface: Any?):Boolean
 
 }
