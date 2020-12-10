@@ -186,6 +186,6 @@ class FFMediaPlayer {
     private external fun native_pause()
 
     //测试视频播放流程
-    external fun native_playVideo(url: String?, surface: Any?):Boolean
+    external fun native_playVideo(url: String?, surface: Any?):Int
 
 }

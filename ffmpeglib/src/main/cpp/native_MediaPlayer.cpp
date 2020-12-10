@@ -3,15 +3,19 @@
 //
 
 #include <jni.h>
-#include <assert.h>
+#include <cassert>
 #include <android/log.h>
+extern "C" {
 #include "libswscale/swscale.h"
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
+#include <include/libavutil/imgutils.h>
+}
 #include <memory>
 #include <mutex>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
+
 #include "MediaPlayerListener.h"
 #include "FFMediaPlayer.h"
 #include "macro.h"
@@ -138,7 +142,7 @@ void JNIMediaPlayerListener::notify(int msg, int ext1, int ext2) {
 static FFMediaPlayer* getMediaPlayer(JNIEnv* env, jobject thiz)
 {
     std::lock_guard<std::mutex> lock(sLock);
-    FFMediaPlayer* const p = (FFMediaPlayer*)env->GetLongField(thiz, fields.context);
+    auto* const p = (FFMediaPlayer*)env->GetLongField(thiz, fields.context);
     return p;
 }
 
@@ -355,7 +359,7 @@ static void com_mao_ffplayer_FFMediaPlayer_native_pause(JNIEnv *env, jobject thi
     int ret = mp->pause();
     if (ret != STATUS_OK) {
         ALOGE("mp pause ret=%d", ret);
-        jniThrowException(env, "java/io/IOException", NULL);
+        jniThrowException(env, "java/io/IOException", nullptr);
     }
 
 }
@@ -363,17 +367,134 @@ static void com_mao_ffplayer_FFMediaPlayer_native_pause(JNIEnv *env, jobject thi
 //测试视频播放流程
 static jint com_mao_ffplayer_FFMediaPlayer_native_playVideo(JNIEnv *env, jobject thiz,jstring url, jstring surface) {
     ALOGI("native_playVideo");
+    //视频 url 地址
     const char *dataSource = env->GetStringUTFChars(url, 0);
     ALOGW("start playvideo... url, %s", dataSource);
-   /* av_register_all();
+    //1. 注册 所有容器和格式
+    av_register_all();
+    avformat_network_init();
 
     AVFormatContext * mFormatCtx = avformat_alloc_context();
 
-    //打开文件
-    if(avformat_open_input(&mFormatCtx,dataSource,NULL,NULL)!=0){
+    //2. 打开文件
+    if(avformat_open_input(&mFormatCtx,dataSource,nullptr,nullptr)!=0){
         ALOGE("Couldn't open file:%s\n", dataSource);
         return -1;
-    }*/
+    }
+    //3. 获取流信息
+    if(avformat_find_stream_info(mFormatCtx,nullptr) < 0){
+       ALOGE("获取流信息失败");
+       return -1;
+    }
+    //4.Find the first video stream 找到第一个视频流
+    int videoStream = -1,i;
+    for( i = 0; i< mFormatCtx->nb_streams;i++){
+        if(mFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && videoStream<0){
+            videoStream = i;
+        }
+    }
+    if(videoStream == -1){
+        ALOGE("无法获取视频流");
+        return -1;
+    }
+    //获取一个指向视频流的编解码器上下文的指针
+    AVCodecContext * mCodecCtx = avcodec_alloc_context3(nullptr);
+    //5. 查找解码器
+    AVCodec *mCodec = avcodec_find_decoder(mCodecCtx->codec_id);
+    if(mCodec == nullptr){
+        ALOGE("编码器获取失败");
+        return -1;
+    }
+    //6.打开编码器
+    if(avcodec_open2(mCodecCtx,mCodec,nullptr)<0){
+        ALOGE("打开编码器失败");
+        return -1;
+    }
+    //获取 native window
+    ANativeWindow *nativeWindow = ANativeWindow_fromSurface(env,surface);
+
+    //视频宽高
+    int videoWidth = mCodecCtx -> width;
+    int videoHeight = mCodecCtx -> height;
+
+    // 设置native window的buffer大小,可自动拉伸
+    ANativeWindow_setBuffersGeometry(nativeWindow,videoWidth,videoHeight,WINDOW_FORMAT_RGBA_8888);
+    ANativeWindow_Buffer windowBuffer;
+
+    if(avcodec_open2(mCodecCtx,mCodec,nullptr)<0){
+        ALOGE("打开编码器失败");
+        return -1;
+    }
+
+    //7. 分配视频帧内存
+    AVFrame *mFrame = av_frame_alloc();
+
+    //渲染帧
+    AVFrame *mFrameRGBA = av_frame_alloc();
+
+    if(mFrame == nullptr || mFrameRGBA == nullptr){
+        ALOGE("分配视频帧内存失败");
+        return -1;
+    }
+
+    // 确定所需的缓冲区大小并分配缓冲区 buffer 数据用于渲染 格式为 WINDOW_FORMAT_RGBA_8888
+    int numBytes=av_image_get_buffer_size(AV_PIX_FMT_RGBA, mCodecCtx->width, mCodecCtx->height, 1);
+    auto * buffer=(uint8_t *)av_malloc(numBytes*sizeof(uint8_t));
+    av_samples_fill_arrays(mFrameRGBA->data, mFrameRGBA->linesize, buffer, AV_PIX_FMT_RGBA,
+                         mFrameRGBA->width, static_cast<AVSampleFormat>(mFrameRGBA->height), 1);
+
+    //渲染前解码格式转换为 RGBA
+    struct  SwsContext *swsContext = sws_getContext(mCodecCtx->width,
+                                                    mCodecCtx->height,
+                                                    mCodecCtx->pix_fmt,
+                                                    mCodecCtx->width,
+                                                    mCodecCtx->height,
+                                                    AV_PIX_FMT_RGBA,
+                                                    SWS_BILINEAR,nullptr,nullptr,nullptr);
+    // 8.从码流中获取帧数据
+    int frameFinished;
+    AVPacket packet;
+
+    while(av_read_frame(mFormatCtx,&packet)>=0){
+        if(packet.stream_index == videoStream){ //确定是视频流数据
+           //9. 解码视频帧
+           avcodec_decode_video2(mCodecCtx,mFrame,&frameFinished,&packet);
+
+           if(frameFinished){
+               //lock buff
+               ANativeWindow_lock(nativeWindow,&windowBuffer,0);
+
+               //format scale
+               sws_scale(swsContext,(uint8_t const * const *)mFrame->data,
+                         mFrame->linesize, 0, mCodecCtx->height,
+                         mFrameRGBA->data, mFrameRGBA->linesize);
+
+               // 获取stride
+               auto * dst = windowBuffer.bits;
+               int dstStride = windowBuffer.stride * 4;
+               auto * src = (uint8_t*) (mFrameRGBA->data[0]);
+               int srcStride = mFrameRGBA->linesize[0];
+
+               // 由于window的stride和帧的stride不同,因此需要逐行复制
+               int h;
+               for (h = 0; h < videoHeight; h++) {
+                   memcpy((uint8_t *)dst + h * dstStride, src + h * srcStride, srcStride);
+               }
+               ANativeWindow_unlockAndPost(nativeWindow);
+           }
+        }
+        av_packet_unref(&packet);
+    }
+    //10. 资源释放
+    av_free(buffer);
+    av_free(mFrameRGBA);
+
+    av_free(mFrame);
+    //解码器释放
+    avcodec_close(mCodecCtx);
+
+    //11.关闭文件输入
+    avformat_close_input(&mFormatCtx);
     return 0;
 }
 
@@ -390,7 +511,7 @@ static JNINativeMethod gMethods[] = {
         {"native_reset",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_reset},
         {"native_release",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_release},
         {"native_pause",        "()V",            (void *)com_mao_ffplayer_FFMediaPlayer_native_pause},
-        {"native_playVideo",        "(Ljava/lang/String;Ljava/lang/Object;)V",  (void *)com_mao_ffplayer_FFMediaPlayer_native_playVideo},
+        {"native_playVideo",        "(Ljava/lang/String;Ljava/lang/Object;)I",  (void *)com_mao_ffplayer_FFMediaPlayer_native_playVideo},
 };
 
 static int registerNativeMethods(JNIEnv* env, const char* className, JNINativeMethod* gMethods, int methodsNum) {
@@ -435,4 +556,4 @@ jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
 
     bail:
     return result;
-}
+ }

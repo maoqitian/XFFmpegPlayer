@@ -53,13 +53,16 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
             }
 
             override fun surfaceCreated(holder: SurfaceHolder) {
-               /* Thread(Runnable {
+                Thread(Runnable {
                     run {
-                        surfaceHolder = holder
+                        /*surfaceHolder = holder
                         mediaPlayer.setDisPlay(surfaceHolder)
-                        preparePlayer()
+                        preparePlayer()*/
+                        val file = File(Environment.getExternalStorageDirectory().toString() + File.separator + "190204084208765161.mp4")
+                        val path = file.absolutePath
+                        mediaPlayer.playVideo("rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov",surfaceHolder.surface)
                     }
-                }).start()*/
+                }).start()
 
             }
         })
