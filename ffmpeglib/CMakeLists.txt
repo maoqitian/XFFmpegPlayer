@@ -30,89 +30,14 @@ add_library(
 
 #libavutil.so
 add_library(
-        avutil
+        ffmpeg
         SHARED
         IMPORTED)
 #指定libavutil.so库的位置
 set_target_properties(
-        avutil
+        ffmpeg
         PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavutil.so)
-
-#libavcodec.so
-add_library(
-        avcodec
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        avcodec
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavcodec.so)
-
-#libavdevice.so
-add_library(
-        avdevice
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        avdevice
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavdevice.so)
-
-#libavfilter.so
-add_library(
-        avfilter
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        avfilter
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavfilter.so)
-
-#libavformat.so
-add_library(
-        avformat
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        avformat
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavformat.so)
-#libswresample.so
-add_library(
-        postproc
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        postproc
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libpostproc.so)
-#libswresample.so
-add_library(
-        swresample
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        swresample
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libswresample.so)
-
-#libswscale.so
-add_library(
-        swscale
-        SHARED
-        IMPORTED)
-#指定libavutil.so库的位置
-set_target_properties(
-        swscale
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libswscale.so)
+        ${distribution_DIR}/libffmpeg.so)
 
 #依赖NDK中自带的log库
 find_library(log-lib log)
@@ -122,16 +47,7 @@ find_library(log-lib log)
 #用 -Wl,--start-group  -Wl,--end-group 包裹起来可以不用去留意so的顺序
 target_link_libraries(
         ffplayer
-        -Wl,--start-group
-        avcodec
-        avdevice
-        avfilter
-        avformat
-        avutil
-        postproc
-        swresample
-        swscale
-        -Wl,--end-group
+        ffmpeg
 
         android
         OpenSLES
