@@ -31,9 +31,9 @@ class VideoDecoder  :public BaseDecoder{
     //视频渲染器
     VideoRender *m_video_render = NULL;
 
-    //显示的目标宽
+    //显示的目标宽（即画面显示时的实际宽度，将通过后续渲染器中具体的窗户大小计算得出）
     int m_dst_w;
-    //显示的目标高
+    //显示的目标高（即画面显示时的实际高度，将通过后续渲染器中具体的窗户大小计算得出）
     int m_dst_h;
 
     /**
