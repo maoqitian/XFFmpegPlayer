@@ -10,7 +10,7 @@
 
 #include "ffplayer/FFplayerFactory.h"
 #include "ffplayer/FFplayer.h"
-#include "FFLog.h"
+#include "utils/FFLog.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>

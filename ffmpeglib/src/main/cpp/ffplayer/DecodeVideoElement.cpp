@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 #include "DecodeVideoElement.h"
-#include "FFLog.h"
+#include "utils/FFLog.h"
 #include "macro.h"
 
 extern "C" {

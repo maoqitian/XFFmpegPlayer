@@ -6,7 +6,7 @@
 #include <android/native_window_jni.h>
 #include <pthread.h>
 #include <macro.h>
-#include <FFLog.h>
+#include <utils/FFLog.h>
 #include <cstring>
 
 void *video_render_task_start(void *args) {

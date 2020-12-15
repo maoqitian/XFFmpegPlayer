@@ -19,7 +19,7 @@ extern "C" {
 #include "MediaPlayerListener.h"
 #include "FFMediaPlayer.h"
 #include "macro.h"
-#include "FFLog.h"
+#include "utils/FFLog.h"
 
 //#define LOG_TAG "FFMediaPlayer-JNI"
 //#define ALOGI(...)  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
