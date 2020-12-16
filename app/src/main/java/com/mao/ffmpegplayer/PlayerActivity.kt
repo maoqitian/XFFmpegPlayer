@@ -20,26 +20,26 @@ import java.io.File
  * @author maoqitian
  * @date 2020/12/7 0007 8:51
  */
-class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnPreparedListener,FFMediaPlayer.OnErrorListener{
+class PlayerActivity :AppCompatActivity(),View.OnClickListener{
 
     private lateinit var  mediaPlayer: FFMediaPlayer
 
     private lateinit var surfaceHolder: SurfaceHolder
     private lateinit var surfaceView: SurfaceView
 
+    private var player: Int? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
         surfaceView = findViewById(R.id.surfaceView)
-
         initListener()
         initSurfaceViewAndPlayer()
+        tv.text = mediaPlayer.ffmpegInfo()
     }
 
     private fun initSurfaceViewAndPlayer() {
         mediaPlayer = FFMediaPlayer()
-        mediaPlayer.setOnPreparedListener(this)
-        mediaPlayer.setOnErrorListener(this)
 
         surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(object :SurfaceHolder.Callback{
@@ -53,28 +53,17 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
             }
 
             override fun surfaceCreated(holder: SurfaceHolder) {
-                Thread(Runnable {
-                    run {
-                        /*surfaceHolder = holder
-                        mediaPlayer.setDisPlay(surfaceHolder)
-                        preparePlayer()*/
-                        val file = File(Environment.getExternalStorageDirectory().toString() + File.separator + "190204084208765161.mp4")
-                        val path = file.absolutePath
-                        mediaPlayer.playVideo("rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov",surfaceHolder.surface)
-                    }
-                }).start()
-
+                if (player == null) {
+                    val file = File(
+                        Environment.getExternalStorageDirectory()
+                            .toString() + File.separator + "190204084208765161.mp4"
+                    )
+                    val path = file.absolutePath
+                    //"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
+                    player = mediaPlayer.createPlayer(path, holder.surface)
+                }
             }
         })
-    }
-    private fun preparePlayer() {
-
-        //   File file = new File(getExternalFilesDir(null), "test.mp4");
-        val file = File(Environment.getExternalStorageDirectory().toString() + File.separator + "190204084208765161.mp4")
-        val path = file.absolutePath
-        Log.e("毛麒添","path：$path")
-        mediaPlayer.setDataSource(path)
-        mediaPlayer.prepareAsync()
     }
 
     private fun initListener() {
@@ -88,27 +77,11 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener,FFMediaPlayer.OnP
         release.setOnClickListener(this)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mediaPlayer.reset()
-        mediaPlayer.release()
-    }
-
     override fun onClick(v: View) {
         when(v.id){
-            R.id.start -> mediaPlayer.start()
-            R.id.pause -> mediaPlayer.pause()
-            R.id.stop -> mediaPlayer.stop()
-            R.id.prepare -> mediaPlayer.playVideo("",surfaceView.holder.surface)
+            R.id.start -> mediaPlayer.play(player!!)
+            R.id.pause -> mediaPlayer.pause(player!!)
         }
     }
 
-    override fun onPrepared(mp: FFMediaPlayer?) {
-        Log.e("毛麒添", "onPrepared")
-        mediaPlayer.start()
-    }
-
-    override fun onError(mp: FFMediaPlayer?, what: Int, extra: Int) {
-        Log.e("毛麒添", "onError what：$what extra：$extra")
-    }
 }

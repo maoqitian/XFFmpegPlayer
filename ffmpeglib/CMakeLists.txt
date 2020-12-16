@@ -5,24 +5,33 @@ cmake_minimum_required(VERSION 3.4.1)
 include_directories(
         src/main/cpp
         src/main/cpp/decoder
+        src/main/cpp/render
         src/main/cpp/utils
         src/main/cpp/include
-        src/main/cpp/ffplayer
+        src/main/cpp/player
         src/main/cpp/decoder/video
+        src/main/cpp/render/video
+        src/main/cpp/render/video/native_render
 )
 
 # 定义源码所在目录
 aux_source_directory(src/main/cpp SRC)
 aux_source_directory(src/main/cpp/utils SRC_UTILS)
 aux_source_directory(src/main/cpp/decoder SRC_DECODER)
+aux_source_directory(src/main/cpp/render SRC_RENDER)
 aux_source_directory(src/main/cpp/decoder/video SRC_DECODER_VIDEO)
-aux_source_directory(src/main/cpp/ffplayer SRC_FFPLAYER)
+aux_source_directory(src/main/cpp/render/video SRC_RENDER_VIDEO)
+aux_source_directory(src/main/cpp/render/video/native_render SRC_RENDER_VIDEO_NATIVE)
+aux_source_directory(src/main/cpp/player SRC_PLAYER)
 
 # 将 SRC_FFPLAYER 添加到 SRC 中
-list(APPEND SRC ${SRC_FFPLAYER})
+list(APPEND SRC ${SRC_PLAYER})
 list(APPEND SRC ${SRC_DECODER})
+list(APPEND SRC ${SRC_RENDER})
 list(APPEND SRC ${SRC_UTILS})
 list(APPEND SRC ${SRC_DECODER_VIDEO})
+list(APPEND SRC ${SRC_RENDER_VIDEO})
+list(APPEND SRC ${SRC_RENDER_VIDEO_NATIVE})
 
 #添加外部的库(可以是动态库或静态库)
 set(distribution_DIR ${CMAKE_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI})

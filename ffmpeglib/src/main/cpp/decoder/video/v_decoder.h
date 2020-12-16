@@ -8,13 +8,14 @@
 #include <android/native_window_jni.h>
 #include <android/native_window.h>
 #include <base_decoder.h>
+#include <render/video/video_render.h>
 
 extern "C" {
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 };
 
-class VideoDecoder  :public BaseDecoder{
+class VideoDecoder  : public BaseDecoder{
     const char *TAG = "VideoDecoder";
 
     //视频数据目标格式

@@ -129,6 +129,26 @@ public:
     BaseDecoder(JNIEnv *env, jstring path, bool for_synthesizer);
     virtual ~BaseDecoder();
 
+    /**
+    * 视频宽度
+    * @return
+    */
+    int width() {
+        return m_codec_ctx->width;
+    }
+
+    /**
+     * 视频高度
+     * @return
+     */
+    int height() {
+        return m_codec_ctx->height;
+    }
+
+    long duration() {
+        return m_duration;
+    }
+
     //--------实现基础类方法-----------------
 
     void GoOn() override;
@@ -146,6 +166,32 @@ protected:
         */
     bool ForSynthesizer() {
         return m_for_synthesizer;
+    }
+    const char * path() {
+        return m_path;
+    }
+
+    /**
+     * 解码器上下文
+     * @return
+     */
+    AVCodecContext *codec_cxt() {
+        return m_codec_ctx;
+    }
+
+    /**
+     * 视频数据编码格式
+     * @return
+     */
+    AVPixelFormat video_pixel_format() {
+        return m_codec_ctx->pix_fmt;
+    }
+
+    /**
+     * 获取解码时间基
+     */
+    AVRational time_base() {
+        return m_format_ctx->streams[m_stream_index]->time_base;
     }
     /**
      * 恢复解码
