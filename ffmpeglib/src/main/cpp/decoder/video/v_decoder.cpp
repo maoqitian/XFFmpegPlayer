@@ -58,6 +58,11 @@ void VideoDecoder::Render(AVFrame *frame) {
                                        frame->pts, time_base(), nullptr, false);
      //开始渲染
      m_video_render->Render(oneFrame);
+    if (m_state_cb != NULL) {
+        if (m_state_cb->DecodeOneFrame(this, oneFrame)) {
+            Wait(0, 200);
+        }
+    }
 }
 
 //存放数据缓存初始化

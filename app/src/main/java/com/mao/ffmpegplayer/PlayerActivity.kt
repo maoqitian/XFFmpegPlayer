@@ -41,29 +41,33 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener{
     private fun initSurfaceViewAndPlayer() {
         mediaPlayer = FFMediaPlayer()
 
-        surfaceHolder = surfaceView.holder
-        surfaceHolder.addCallback(object :SurfaceHolder.Callback{
-            override fun surfaceChanged(
-                holder: SurfaceHolder,
-                format: Int,
-                width: Int,
-                height: Int) {}
+        val path = Environment.getExternalStorageDirectory().absolutePath+"/1608131634574.mp4"
+        //1608131634574.mp4
+        //190204084208765161.mp4
+        //SVID_20191203_143408_1.mp4
+        //"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
+        Log.e("毛麒添", "视频文件$path")
+        if (File(path).exists()) {
+            surfaceHolder = surfaceView.holder
+            surfaceHolder.addCallback(object :SurfaceHolder.Callback{
+                override fun surfaceChanged(
+                    holder: SurfaceHolder,
+                    format: Int,
+                    width: Int,
+                    height: Int) {}
 
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-            }
-
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                if (player == null) {
-                    val file = File(
-                        Environment.getExternalStorageDirectory()
-                            .toString() + File.separator + "190204084208765161.mp4"
-                    )
-                    val path = file.absolutePath
-                    //"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
-                    player = mediaPlayer.createPlayer(path, holder.surface)
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
                 }
-            }
-        })
+
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    if (player == null) {
+                        player = mediaPlayer.createPlayer(path, holder.surface)
+                    }
+                }
+            })
+        }else{
+            Toast.makeText(this, "视频文件不存在，请在手机根目录下放置 mvtest.mp4", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun initListener() {
