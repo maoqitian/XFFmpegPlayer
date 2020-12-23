@@ -20,6 +20,7 @@ BaseDecoder::~BaseDecoder() {
 
 //初始化
 void BaseDecoder::Init(JNIEnv *env, jstring path){
+    ALOGE( "BaseDecoder Init ");
      m_path_ref = env->NewGlobalRef(path);
      m_path = env->GetStringUTFChars(path,nullptr);
      //获取 JVM 创建线程做准备
@@ -47,6 +48,8 @@ void BaseDecoder::Decode(std::shared_ptr<BaseDecoder> that) {
         return;
     }
 
+    that->CallbackState(PREPARE);
+
     //初始化解码器
     that->InitFFmpegDecoder(env);
     //分配解码帧数据内存
@@ -57,6 +60,9 @@ void BaseDecoder::Decode(std::shared_ptr<BaseDecoder> that) {
     that->LoopDecode();
     //退出解码
     that->DoneDecode(env);
+
+    that->CallbackState(STOP);
+
     //解除线程和JVM关联
     that->m_jvm_for_thread->DetachCurrentThread();
 }
@@ -66,9 +72,10 @@ void BaseDecoder::InitFFmpegDecoder(JNIEnv *env) {
 
     //1.初始化上下文
     m_format_ctx = avformat_alloc_context();
+    //ALOGE( "InitFFmpegDecoder",m_path);
     //2.打开文件
     if(avformat_open_input(&m_format_ctx,m_path, nullptr, nullptr)!=0){
-       ALOGE("Fail to open file :",m_path);
+       //ALOGE("Fail to open file :",m_path);
        DoneDecode(env);
        return;
     }
@@ -129,11 +136,15 @@ void BaseDecoder::LoopDecode() {
 
     if(STOP == m_state) m_state = START;
 
+    CallbackState(START);
+
     LOG_INFO(TAG, LogSpec(), "Start loop decode")
 
     while (1){
         if(m_state!=DECODING && m_state!=START && m_state!=STOP){
+            CallbackState(m_state);
             Wait();
+            CallbackState(m_state);
             //恢复同步起始时间，去除等待流失时间
             m_started_t = GetCurMsTime() -m_cur_t_s;
         }
@@ -157,15 +168,18 @@ void BaseDecoder::LoopDecode() {
             } else{
                m_state = FINISH;
             }
+            CallbackState(FINISH);
         }
     }
 
 }
 //解码一帧数据
 AVFrame *BaseDecoder::DecodeOneFrame() {
+    //从 m_format_ctx 中读取一帧解封好的待解码数据，存放在 m_packet 中
     int ret = av_read_frame(m_format_ctx,m_packet);
     while (ret == 0){
         if(m_packet->stream_index == m_stream_index){
+            //将 m_packet 发送到解码器中解码，解码好的数据存放在 m_codec_ctx 中
             switch (avcodec_send_packet(m_codec_ctx,m_packet)){
                 case AVERROR_EOF:{
                     av_packet_unref(m_packet);
@@ -187,6 +201,7 @@ AVFrame *BaseDecoder::DecodeOneFrame() {
                 default:
                     break;
             }
+            //接收一帧解码好的数据，存放在 m_frame 中
             int result = avcodec_receive_frame(m_codec_ctx,m_frame);
             if(result == 0){
                 ObtainTimeStamp();
@@ -194,7 +209,7 @@ AVFrame *BaseDecoder::DecodeOneFrame() {
                 //返回最终解码好的数据
                 return m_frame;
             } else{
-                LOG_INFO(TAG, LogSpec(), "Receive frame error result: %d", av_err2str(AVERROR(result)))
+                LOG_INFO(TAG, LogSpec(), "Receive frame error result: %s", av_err2str(AVERROR(result)))
             }
         }
         //释放资源 packet
@@ -303,6 +318,31 @@ long BaseDecoder::GetDuration() {
 
 long BaseDecoder::GetCurPos() {
     return (long) m_cur_t_s;
+}
+
+void BaseDecoder::CallbackState(DecodeState status) {
+    if (m_state_cb != nullptr) {
+        switch (status) {
+            case PREPARE:
+                m_state_cb->DecodePrepare(this);
+                break;
+            case START:
+                m_state_cb->DecodeReady(this);
+                break;
+            case DECODING:
+                m_state_cb->DecodeRunning(this);
+                break;
+            case PAUSE:
+                m_state_cb->DecodePause(this);
+                break;
+            case FINISH:
+                m_state_cb->DecodeFinish(this);
+                break;
+            case STOP:
+                m_state_cb->DecodeStop(this);
+                break;
+        }
+    }
 }
 
 

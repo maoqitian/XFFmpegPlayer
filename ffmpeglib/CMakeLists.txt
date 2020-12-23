@@ -6,12 +6,19 @@ include_directories(
         src/main/cpp
         src/main/cpp/decoder
         src/main/cpp/render
+        src/main/cpp/muxer
         src/main/cpp/utils
         src/main/cpp/include
         src/main/cpp/player
         src/main/cpp/decoder/video
+        src/main/cpp/decoder/audio
         src/main/cpp/render/video
+        src/main/cpp/render/audio
         src/main/cpp/render/video/native_render
+        src/main/cpp/render/video/opengl_render
+        src/main/cpp/opengl/drawer
+        src/main/cpp/opengl/egl
+        src/main/cpp/opengl/drawer/proxy
 )
 
 # 定义源码所在目录
@@ -19,19 +26,35 @@ aux_source_directory(src/main/cpp SRC)
 aux_source_directory(src/main/cpp/utils SRC_UTILS)
 aux_source_directory(src/main/cpp/decoder SRC_DECODER)
 aux_source_directory(src/main/cpp/render SRC_RENDER)
+aux_source_directory(src/main/cpp/muxer SRC_MUXER)
 aux_source_directory(src/main/cpp/decoder/video SRC_DECODER_VIDEO)
+aux_source_directory(src/main/cpp/decoder/audio SRC_DECODER_AUDIO)
 aux_source_directory(src/main/cpp/render/video SRC_RENDER_VIDEO)
+aux_source_directory(src/main/cpp/render/audio SRC_RENDER_AUDIO)
 aux_source_directory(src/main/cpp/render/video/native_render SRC_RENDER_VIDEO_NATIVE)
+aux_source_directory(src/main/cpp/render/video/opengl_render SRC_RENDER_VIDEO_OPENGL)
 aux_source_directory(src/main/cpp/player SRC_PLAYER)
+aux_source_directory(src/main/cpp/opengl/drawer SRC_OPENGL_DRAWER)
+aux_source_directory(src/main/cpp/opengl/egl SRC_OPENGL_EGL)
+aux_source_directory(src/main/cpp/opengl/drawer/proxy SRC_OPENGL_DRAWER_PROXY)
+
 
 # 将 SRC_FFPLAYER 添加到 SRC 中
 list(APPEND SRC ${SRC_PLAYER})
 list(APPEND SRC ${SRC_DECODER})
 list(APPEND SRC ${SRC_RENDER})
+list(APPEND SRC ${SRC_MUXER})
 list(APPEND SRC ${SRC_UTILS})
 list(APPEND SRC ${SRC_DECODER_VIDEO})
+list(APPEND SRC ${SRC_DECODER_AUDIO})
 list(APPEND SRC ${SRC_RENDER_VIDEO})
+list(APPEND SRC ${SRC_RENDER_AUDIO})
 list(APPEND SRC ${SRC_RENDER_VIDEO_NATIVE})
+list(APPEND SRC ${SRC_RENDER_VIDEO_OPENGL})
+list(APPEND SRC ${SRC_OPENGL_DRAWER_PROXY})
+list(APPEND SRC ${SRC_OPENGL_DRAWER})
+list(APPEND SRC ${SRC_OPENGL_EGL})
+list(APPEND SRC ${SRC_OPENGL_DRAWER_PROXY})
 
 #添加外部的库(可以是动态库或静态库)
 set(distribution_DIR ${CMAKE_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI})
@@ -67,7 +90,9 @@ target_link_libraries(
         ffplayer
         ffmpeg
 
-        android
+        -landroid
         OpenSLES
+        -lEGL
+        -lGLESv2
 
         ${log-lib})

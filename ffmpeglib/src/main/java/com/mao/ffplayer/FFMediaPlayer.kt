@@ -15,6 +15,7 @@ class FFMediaPlayer {
         }
     }
 
+     // SurfaceView 渲染
      external fun ffmpegInfo(): String
 
      external fun createPlayer(path: String, surface: Surface): Int
@@ -23,5 +24,10 @@ class FFMediaPlayer {
 
      external fun pause(player: Int)
 
-
+     //OpenGL ES 视频渲染
+     external fun createOpenGLPlayer(path: String, surface: Surface): Int
+     //播放或者暂停
+     external fun playOrPauseOpenGL(player: Int)
+     //停止播放
+     external fun stopPlayOpenGL(player: Int)
 }

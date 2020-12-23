@@ -11,6 +11,7 @@
 #include "i_decoder.h"
 #include "decode_state.h"
 #include "utils/FFLog.h"
+#include "i_decode_state_cb.h"
 #include <utils/logger.h>
 
 extern "C" {
@@ -158,7 +159,24 @@ public:
     long GetDuration() override;
     long GetCurPos() override;
 
+    void SetStateReceiver(IDecodeStateCb *cb) override {
+        m_state_cb = cb;
+    }
+
+    char *GetStateStr() {
+        switch (m_state) {
+            case STOP: return (char *)"STOP";
+            case START: return (char *)"START";
+            case DECODING: return (char *)"DECODING";
+            case PAUSE: return (char *)"PAUSE";
+            case FINISH: return (char *)"FINISH";
+            default: return (char *)"UNKNOW";
+        }
+    }
+
 protected:
+
+    IDecodeStateCb *m_state_cb = NULL;
 
       /**
         * 是否为合成器提供解码
@@ -238,6 +256,9 @@ protected:
         * 进入等待
         */
         void Wait(long second = 0, long ms = 0);
+
+
+        void CallbackState(DecodeState status);
 };
 
 #endif //FFMPEGPLAYER_BASE_DECODER_H
