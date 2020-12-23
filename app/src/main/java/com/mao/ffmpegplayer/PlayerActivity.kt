@@ -56,11 +56,17 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener{
                 if (player == null) {
                     val file = File(
                         Environment.getExternalStorageDirectory()
-                            .toString() + File.separator + "190204084208765161.mp4"
+                            .toString() + File.separator + "1608131634574.mp4"
                     )
                     val path = file.absolutePath
                     //"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
-                    player = mediaPlayer.createPlayer(path, holder.surface)
+                    //http://vjs.zencdn.net/v/oceans.mp4
+                    //1608131634574.mp4
+                    if(file.exists()){
+                        player = mediaPlayer.createPlayer(path, holder.surface)
+                    }else{
+                        Toast.makeText(application,"传入正确视频地址",Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         })
