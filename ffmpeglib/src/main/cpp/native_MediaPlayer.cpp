@@ -18,6 +18,7 @@ extern "C" {
 #include <android/native_window_jni.h>
 #include <player/player.h>
 #include <include/libavcodec/jni.h>
+#include <player/gl_player.h>
 #include "utils/FFLog.h"
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -47,7 +48,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_ffmpegInfo(JNIEnv *env,jobject  /* this */) 
     return env->NewStringUTF(info);
 }
 
-
+// native surface 渲染
 extern "C" JNIEXPORT jint JNICALL
 Java_com_mao_ffplayer_FFMediaPlayer_createPlayer(JNIEnv *env,
                                                        jobject  /* this */,
@@ -67,4 +68,28 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_mao_ffplayer_FFMediaPlayer_pause(JNIEnv *env,jobject  /* this */,jint player) {
     Player *p = (Player *) player;
     p->pause();
+}
+
+//使用OpenGL ES 渲染
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_createOpenGLPlayer(JNIEnv *env,
+                                                 jobject  /* this */,
+                                                 jstring path,
+                                                 jobject surface) {
+    GLPlayer *player = new GLPlayer(env, path);
+    player->SetSurface(surface);
+    return (jint)(size_t) player;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_playOrPauseOpenGL(JNIEnv *env,jobject  /* this */,jint player) {
+    GLPlayer *p = (GLPlayer *) player;
+    p->PlayOrPause();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_stopPlayOpenGL(JNIEnv *env,jobject  /* this */,jint player) {
+    GLPlayer *p = (GLPlayer *) player;
+    p->Release();
 }

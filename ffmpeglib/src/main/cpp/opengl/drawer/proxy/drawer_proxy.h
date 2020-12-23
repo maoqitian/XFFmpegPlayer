@@ -15,7 +15,4 @@ public:
     virtual ~DrawerProxy() {}
 };
 
-};
-
-
 #endif //FFMPEGPLAYER_DRAWER_PROXY_H

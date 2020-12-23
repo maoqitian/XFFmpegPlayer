@@ -11,6 +11,9 @@
 #include "../video_render.h"
 #include "opengl_pixel_receiver.h"
 #include <memory>
+#include <opengl/egl/egl_surface.h>
+#include <opengl/drawer/proxy/drawer_proxy.h>
+
 class OpenGLRender {
 private:
 

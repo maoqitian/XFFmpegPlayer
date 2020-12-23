@@ -25,12 +25,12 @@ void VideoDrawer::ReleaseRender() {
 }
 
 const char* VideoDrawer::GetVertexShader() {
-    const GLbyte shader[] = "attribute vec4 aPosition;\n"
-                            //                            "uniform mat4 uMatrix;\n"
+    const auto shader = "attribute vec4 aPosition;\n"
+                            //"uniform mat4 uMatrix;\n"
                             "attribute vec2 aCoordinate;\n"
                             "varying vec2 vCoordinate;\n"
                             "void main() {\n"
-                            //                            "  gl_Position = uMatrix*aPosition;\n"
+                            //"  gl_Position = uMatrix*aPosition;\n"
                             "  gl_Position = aPosition;\n"
                             "  vCoordinate = aCoordinate;\n"
                             "}";
@@ -38,16 +38,16 @@ const char* VideoDrawer::GetVertexShader() {
 }
 
 const char* VideoDrawer::GetFragmentShader() {
-    const GLbyte shader[] = "precision mediump float;\n"
+    const auto shader = "precision mediump float;\n"
                             "uniform sampler2D uTexture;\n"
                             "varying vec2 vCoordinate;\n"
                             "void main() {\n"
                             "  vec4 color = texture2D(uTexture, vCoordinate);\n"
-                            //                            "  color.a = 0.5f;"
-                            //                            "  gl_FragColor = color;\n"
+                            // "  color.a = 0.5f;"
+                            // "  gl_FragColor = color;\n"
                             "float gray = (color.r + color.g + color.b)/3.0;\n"
                             "gl_FragColor = vec4(gray, gray, gray, 1.0);\n"
-                            //                            "  gl_FragColor = vec4(1, 1, 1, 1);\n"
+                            //"  gl_FragColor = vec4(1, 1, 1, 1);\n"
                             "}";
     return (char *)shader;
 }

@@ -57,11 +57,12 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener{
                     height: Int) {}
 
                 override fun surfaceDestroyed(holder: SurfaceHolder) {
+                    mediaPlayer.stopPlayOpenGL(player!!)
                 }
 
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     if (player == null) {
-                        player = mediaPlayer.createPlayer(path, holder.surface)
+                        player = mediaPlayer.createOpenGLPlayer(path, holder.surface)
                     }
                 }
             })

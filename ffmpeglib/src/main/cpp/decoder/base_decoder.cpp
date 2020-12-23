@@ -72,10 +72,10 @@ void BaseDecoder::InitFFmpegDecoder(JNIEnv *env) {
 
     //1.初始化上下文
     m_format_ctx = avformat_alloc_context();
-    ALOGE( "InitFFmpegDecoder",m_path);
+    //ALOGE( "InitFFmpegDecoder",m_path);
     //2.打开文件
     if(avformat_open_input(&m_format_ctx,m_path, nullptr, nullptr)!=0){
-       ALOGE("Fail to open file :",m_path);
+       //ALOGE("Fail to open file :",m_path);
        DoneDecode(env);
        return;
     }
@@ -209,7 +209,7 @@ AVFrame *BaseDecoder::DecodeOneFrame() {
                 //返回最终解码好的数据
                 return m_frame;
             } else{
-                LOG_INFO(TAG, LogSpec(), "Receive frame error result: %d", av_err2str(AVERROR(result)))
+                LOG_INFO(TAG, LogSpec(), "Receive frame error result: %s", av_err2str(AVERROR(result)))
             }
         }
         //释放资源 packet

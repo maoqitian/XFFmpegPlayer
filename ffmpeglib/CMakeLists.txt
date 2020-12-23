@@ -50,6 +50,7 @@ list(APPEND SRC ${SRC_DECODER_AUDIO})
 list(APPEND SRC ${SRC_RENDER_VIDEO})
 list(APPEND SRC ${SRC_RENDER_AUDIO})
 list(APPEND SRC ${SRC_RENDER_VIDEO_NATIVE})
+list(APPEND SRC ${SRC_RENDER_VIDEO_OPENGL})
 list(APPEND SRC ${SRC_OPENGL_DRAWER_PROXY})
 list(APPEND SRC ${SRC_OPENGL_DRAWER})
 list(APPEND SRC ${SRC_OPENGL_EGL})
@@ -89,8 +90,9 @@ target_link_libraries(
         ffplayer
         ffmpeg
 
-        android
-        # 打开opensl es支持
+        -landroid
         OpenSLES
+        -lEGL
+        -lGLESv2
 
         ${log-lib})

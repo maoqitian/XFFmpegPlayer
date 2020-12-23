@@ -5,6 +5,7 @@
 #include <thread>
 #include <unistd.h>
 #include <libavutil/mem.h>
+#include <utils/logger.h>
 #include "opengl_render.h"
 #include "../../../opengl/drawer/proxy/drawer_proxy.h"
 
