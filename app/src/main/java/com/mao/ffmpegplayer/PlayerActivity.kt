@@ -16,6 +16,7 @@ import java.io.File
 
 
 /**
+ * 播放器 Activity
  * @Description: 播放器 Activity
  * @author maoqitian
  * @date 2020/12/7 0007 8:51
@@ -57,12 +58,12 @@ class PlayerActivity :AppCompatActivity(),View.OnClickListener{
                     height: Int) {}
 
                 override fun surfaceDestroyed(holder: SurfaceHolder) {
-                    mediaPlayer.stopPlayOpenGL(player!!)
+                    //mediaPlayer.pause(player!!)
                 }
 
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     if (player == null) {
-                        player = mediaPlayer.createOpenGLPlayer(path, holder.surface)
+                        player = mediaPlayer.createPlayer(path, holder.surface)
                     }
                 }
             })
