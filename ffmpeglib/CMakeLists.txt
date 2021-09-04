@@ -57,9 +57,12 @@ list(APPEND SRC ${SRC_OPENGL_EGL})
 list(APPEND SRC ${SRC_OPENGL_DRAWER_PROXY})
 
 #添加外部的库(可以是动态库或静态库)
-set(distribution_DIR ${CMAKE_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI})
+#原本 jniLibs 目录需更改名称 不然会出现如下编译错误
+#More than one file was found with OS independent path 'lib/armeabi-v7a/xxxx.so'.
+#If you are using jniLibs and CMake IMPORTED targets, see https://developer.android.com/studio/releases/gradle-plugin#groovy
+set(distribution_DIR ${CMAKE_SOURCE_DIR}/src/main/cmakeLibs/${ANDROID_ABI})
 
-MESSAGE(WARNING "${CMAKE_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI}")
+MESSAGE(WARNING "${CMAKE_SOURCE_DIR}/src/main/cmakeLibs/${ANDROID_ABI}")
 
 #添加自己写的 C/C++源文件 CMAKE_SOURCE_DIR被定为到app/src/main/cpp下，所以配置的src/main/…/会定位不到，
 #所以将app/src/main/cpp目录下的CMakeLists剪切到app目录下与src同级
