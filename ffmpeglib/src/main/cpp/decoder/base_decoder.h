@@ -13,252 +13,142 @@
 #include "utils/FFLog.h"
 #include "i_decode_state_cb.h"
 #include <utils/logger.h>
+#include <thread>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/frame.h>
 #include <libavutil/time.h>
+#include <libavcodec/jni.h>
 }
+
+
+#define MAX_PATH   2048
+//音视频 时间延迟 阈值
+#define DELAY_THRESHOLD 100 //100ms
+
+using namespace std;
+
+enum DecoderState {
+    STATE_UNKNOWN,
+    STATE_DECODING,
+    STATE_PAUSE,
+    STATE_STOP
+};
+
+enum DecoderMsg {
+    MSG_DECODER_INIT_ERROR,
+    MSG_DECODER_READY,
+    MSG_DECODER_DONE,
+    MSG_REQUEST_RENDER,
+    MSG_DECODING_TIME
+};
 
 class BaseDecoder : public IDecoder{
     //-------------定义解码相关------------------------------
-    // 解码信息上下文
+private:
+    int InitFFDecoder();
+    void UnInitDecoder();
+    //启动解码线程
+    void StartDecodingThread();
+    //音视频解码循环
+    void DecodingLoop();
+    //更新显示时间戳
+    void UpdateTimeStamp();
+    //音视频同步
+    long AVSync();
+    //解码一个packet编码数据
+    int DecodeOnePacket();
+    //线程函数
+    static void DoAVDecoding(BaseDecoder *decoder);
 
-    const char *TAG = "BaseDecoder";
-
-    AVFormatContext *m_format_ctx = NULL;
-
-    // 解码器
-    AVCodec *m_codec = NULL;
-
-    // 解码器上下文
-    AVCodecContext *m_codec_ctx = NULL;
-
-    // 待解码包
-    AVPacket *m_packet = NULL;
-
-    // 最终解码数据
-    AVFrame *m_frame = NULL;
-
-    // 当前播放时间
-    int64_t m_cur_t_s = 0;
-
-    // 总时长
-    long m_duration = 0;
-
-    // 开始播放的时间
-    int64_t m_started_t = -1;
-
-    // 解码状态
-    DecodeState m_state = STOP;
-
-    // 数据流索引
-    int m_stream_index = -1;
-
-
-    /**
-     * 初始化
-     * @param env jvm环境
-     * @param path 本地文件路径
-     */
-    void Init(JNIEnv *env, jstring path);
-
-    /**
-    * 初始化FFMpeg相关的参数
-    * @param env jvm环境
-    */
-    void InitFFmpegDecoder(JNIEnv * env);
-
-    /**
-     * 分配解码过程中需要的缓存
-     */
-    void AllocFrameBuffer();
-
-    /**
-     * 循环解码
-     */
-    void LoopDecode();
-
-    /**
-     * 获取当前帧时间戳
-     */
-    void ObtainTimeStamp();
-
-    /**
-     * 解码完成
-     * @param env jvm环境
-     */
-    void DoneDecode(JNIEnv *env);
-
-    /**
-     * 时间同步
-     */
-    void SyncRender();
-
-    // -------------------定义线程相关-----------------------------
-    // 线程依附的JVM环境
-    JavaVM *m_jvm_for_thread = NULL;
-
-    // 原始路径jstring引用，否则无法在线程中操作
-    jobject m_path_ref = NULL;
-
-    // 经过转换的路径
-    const char *m_path = NULL;
-
-    // 线程等待锁变量
-    pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t m_cond = PTHREAD_COND_INITIALIZER;
-
-    // 为合成器提供解码
-    bool m_for_synthesizer = false;
-    /**
-     * 新建解码线程
-     */
-    void CreateDecodeThread();
-
-    /**
-     * 静态解码方法，用于解码线程回调
-     * @param that 当前解码器
-     */
-    static void Decode(std::shared_ptr<BaseDecoder> that);
+    //封装格式上下文
+    AVFormatContext *m_AVFormatContext = nullptr;
+    //解码器上下文
+    AVCodecContext  *m_AVCodecContext = nullptr;
+    //解码器
+    AVCodec         *m_AVCodec = nullptr;
+    //编码的数据包
+    AVPacket        *m_Packet = nullptr;
+    //解码的帧
+    AVFrame         *m_Frame = nullptr;
+    //数据流的类型
+    AVMediaType      m_MediaType = AVMEDIA_TYPE_UNKNOWN;
+    //文件地址
+    char       m_Url[MAX_PATH] = {0};
+    //当前播放时间
+    long             m_CurTimeStamp = 0;
+    //播放的起始时间
+    long             m_StartTimeStamp = -1;
+    //总时长 ms
+    long             m_Duration = 0;
+    //数据流索引
+    int              m_StreamIndex = -1;
+    //锁和条件变量
+    mutex               m_Mutex;
+    condition_variable  m_Cond;
+    thread             *m_Thread = nullptr;
+    //seek position
+    volatile float      m_SeekPosition = 0;
+    volatile bool       m_SeekSuccess = false;
+    //解码器状态
+    volatile int  m_DecoderState = STATE_UNKNOWN;
+    void* m_AVDecoderContext = nullptr;
+    AVSyncCallback m_AVSyncCallback = nullptr;//用作音视频同步
 
 public:
 
     //--------构造方法和析构方法-------------
 
-    BaseDecoder(JNIEnv *env, jstring path, bool for_synthesizer);
-    virtual ~BaseDecoder();
+    BaseDecoder()
+    {};
+    virtual ~BaseDecoder(){};
 
-    /**
-    * 视频宽度
-    * @return
-    */
-    int width() {
-        return m_codec_ctx->width;
+    //开始播放
+    virtual void Start();
+    //暂停播放
+    virtual void Pause();
+    //停止
+    virtual void Stop();
+    //获取时长
+    virtual float GetDuration()
+    {
+        //ms to s
+        return m_Duration * 1.0f / 1000;
     }
-
-    /**
-     * 视频高度
-     * @return
-     */
-    int height() {
-        return m_codec_ctx->height;
+    //seek 到某个时间点播放
+    virtual void SeekToPosition(float position);
+    //当前播放的位置，用于更新进度条和音视频同步
+    virtual float GetCurrentPosition();
+    virtual void ClearCache()
+    {};
+    virtual void SetMessageCallback(void* context, MessageCallback callback)
+    {
+        m_MsgContext = context;
+        m_MsgCallback = callback;
     }
-
-    long duration() {
-        return m_duration;
-    }
-
-    //--------实现基础类方法-----------------
-
-    void GoOn() override;
-    void Pause() override;
-    void Stop() override;
-    bool IsRunning() override;
-    long GetDuration() override;
-    long GetCurPos() override;
-
-    void SetStateReceiver(IDecodeStateCb *cb) override {
-        m_state_cb = cb;
-    }
-
-    char *GetStateStr() {
-        switch (m_state) {
-            case STOP: return (char *)"STOP";
-            case START: return (char *)"START";
-            case DECODING: return (char *)"DECODING";
-            case PAUSE: return (char *)"PAUSE";
-            case FINISH: return (char *)"FINISH";
-            default: return (char *)"UNKNOW";
-        }
+    //设置音视频同步的回调
+    virtual void SetAVSyncCallback(void* context, AVSyncCallback callback)
+    {
+        m_AVDecoderContext = context;
+        m_AVSyncCallback = callback;
     }
 
 protected:
 
-    IDecodeStateCb *m_state_cb = NULL;
+    void * m_MsgContext = nullptr;
+    MessageCallback m_MsgCallback = nullptr;
+    virtual int Init(const char *url, AVMediaType mediaType);
+    virtual void UnInit();
+    virtual void OnDecoderReady() = 0;
+    virtual void OnDecoderDone() = 0;
+    //解码数据的回调
+    virtual void OnFrameAvailable(AVFrame *frame) = 0;
 
-      /**
-        * 是否为合成器提供解码
-        * @return true 为合成器提供解码 false 解码播放
-        */
-    bool ForSynthesizer() {
-        return m_for_synthesizer;
+    AVCodecContext *GetCodecContext() {
+        return m_AVCodecContext;
     }
-    const char * path() {
-        return m_path;
-    }
-
-    /**
-     * 解码器上下文
-     * @return
-     */
-    AVCodecContext *codec_cxt() {
-        return m_codec_ctx;
-    }
-
-    /**
-     * 视频数据编码格式
-     * @return
-     */
-    AVPixelFormat video_pixel_format() {
-        return m_codec_ctx->pix_fmt;
-    }
-
-    /**
-     * 获取解码时间基
-     */
-    AVRational time_base() {
-        return m_format_ctx->streams[m_stream_index]->time_base;
-    }
-    /**
-     * 恢复解码
-     */
-    void SendSignal();
-    /**
-     * 解码一帧数据
-     * @return
-     */
-    AVFrame* DecodeOneFrame();
-
-    /**
-     * 音视频索引
-     */
-    virtual AVMediaType GetMediaType() = 0;
-    /**
-        * 是否需要自动循环解码
-        */
-    virtual bool NeedLoopDecode() = 0;
-        /**
-         * 子类准备回调方法
-         * @note 注：在解码线程中回调
-         * @param env 解码线程绑定的JVM环境
-         */
-        virtual void Prepare(JNIEnv *env) = 0;
-
-        /**
-         * 子类渲染回调方法
-         * @note 注：在解码线程中回调
-         * @param frame 视频：一帧YUV数据；音频：一帧PCM数据
-         */
-        virtual void Render(AVFrame *frame) = 0;
-
-        /**
-         * 子类释放资源回调方法
-         */
-        virtual void Release() = 0;
-
-       /**
-        * Log前缀
-        */
-        virtual const char *const LogSpec() = 0;
-       /**
-        * 进入等待
-        */
-        void Wait(long second = 0, long ms = 0);
-
-
-        void CallbackState(DecodeState status);
 };
 
 #endif //FFMPEGPLAYER_BASE_DECODER_H

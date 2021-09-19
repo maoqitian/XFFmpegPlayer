@@ -7,14 +7,18 @@
 
 #include "i_decode_state_cb.h"
 
+typedef void (*MessageCallback)(void*, int, float);
+typedef long (*AVSyncCallback)(void*);
+
+
 class IDecoder{
 public:
-    virtual void GoOn() = 0;
+    virtual void Start() = 0;
     virtual void Pause() = 0;
     virtual void Stop() = 0;
-    virtual bool IsRunning() = 0;
-    virtual long GetDuration() = 0;
-    virtual long GetCurPos() = 0;
-    virtual void SetStateReceiver(IDecodeStateCb *cb) = 0;
+    virtual float GetDuration() = 0;
+    virtual void SeekToPosition(float position) = 0;
+    virtual float GetCurrentPosition() = 0;
+    virtual void SetMessageCallback(void* context, MessageCallback callback) = 0;
 };
 #endif //FFMPEGPLAYER_I_DECODER_H
