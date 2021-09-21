@@ -12,7 +12,7 @@ class XFApplication :Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashReport.initCrashReport(applicationContext, "b0e1710179", true)
+        //CrashReport.initCrashReport(applicationContext, "b0e1710179", true)
 
     }
 }

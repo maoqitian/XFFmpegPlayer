@@ -13,29 +13,29 @@ FFRepack::FFRepack(JNIEnv *env, jstring in_path, jstring out_path) {
 
     // 打开原视频文件，并获取相关参数
     if (OpenSrcFile(srcPath) >= 0) {
-        LOGE(TAG, "Open src file success")
+        //LOGE(TAG, "Open src file success")
         // 初始化打包参数
         if (InitMuxerParams(destPath) >= 0) {
-            LOGE(TAG, "Init muxer params success")
+            //LOGE(TAG, "Init muxer params success")
         } else {
-            LOGE(TAG, "Init muxer params fail")
+            //LOGE(TAG, "Init muxer params fail")
         }
     } else {
-        LOGE(TAG, "Open src file fail")
+        //LOGE(TAG, "Open src file fail")
     }
 }
 
 int FFRepack::OpenSrcFile(const char *srcPath) {
     // 打开文件
-    LOGI(TAG, "Open file: %s", srcPath)
+    //LOGI(TAG, "Open file: %s", srcPath)
     if ((avformat_open_input(&m_in_format_cxt, srcPath, NULL, NULL)) < 0) {
-        LOGE(TAG, "Fail to open input file")
+        //LOGE(TAG, "Fail to open input file")
         return -1;
     }
 
     // 获取音视频参数
     if ((avformat_find_stream_info(m_in_format_cxt, 0)) < 0) {
-        LOGE(TAG, "Fail to retrieve input stream information")
+        //LOGE(TAG, "Fail to retrieve input stream information")
         return -1;
     }
 
@@ -56,41 +56,41 @@ int FFRepack::InitMuxerParams(const char *destPath) {
         // 为目标文件创建输出流
         AVStream *out_stream = avformat_new_stream(m_out_format_cxt, NULL);
         if (!out_stream) {
-            LOGE(TAG, "Fail to allocate output stream")
+            //LOGE(TAG, "Fail to allocate output stream")
             return -1;
         }
 
         // 复制原视频数据流参数到目标输出流
         if (avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar) < 0) {
-            LOGE(TAG, "Fail to copy input context to output stream")
+            //LOGE(TAG, "Fail to copy input context to output stream")
             return -1;
         }
     }
 
     // 打开目标文件
     if (avio_open(&m_out_format_cxt->pb, destPath, AVIO_FLAG_WRITE) < 0) {
-        LOGE(TAG, "Could not open output file %s ", destPath);
+        //LOGE(TAG, "Could not open output file %s ", destPath);
         return -1;
     }
 
     // 写入文件头信息
     if (avformat_write_header(m_out_format_cxt, NULL) < 0) {
-        LOGE(TAG, "Error occurred when opening output file");
+        //LOGE(TAG, "Error occurred when opening output file");
         return -1;
     } else {
-        LOGE(TAG, "Write file header success");
+        //LOGE(TAG, "Write file header success");
     }
 
     return 0;
 }
 
 void FFRepack::Start() {
-    LOGE(TAG, "Start repacking ....")
+    //LOGE(TAG, "Start repacking ....")
     AVPacket pkt;
     while (1) {
         // 读取数据
         if (av_read_frame(m_in_format_cxt, &pkt)) {
-            LOGE(TAG, "End of video，write trailer")
+            //LOGE(TAG, "End of video，write trailer")
 
             // 释放数据帧和相关资源
             av_packet_unref(&pkt);
@@ -133,12 +133,12 @@ void FFRepack::Write(AVPacket pkt) {
 
     int ret = av_interleaved_write_frame(m_out_format_cxt, &pkt);
     if (ret < 0) {
-        LOGE(TAG, "Error to muxing packet: %x", ret)
+        //LOGE(TAG, "Error to muxing packet: %x", ret)
     }
 }
 
 void FFRepack::Release() {
-    LOGE(TAG, "Finish repacking, release resources")
+    //LOGE(TAG, "Finish repacking, release resources")
     // 关闭输入
     if (m_in_format_cxt) {
         avformat_close_input(&m_in_format_cxt);

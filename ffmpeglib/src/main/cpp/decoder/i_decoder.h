@@ -5,8 +5,6 @@
 #ifndef FFMPEGPLAYER_I_DECODER_H
 #define FFMPEGPLAYER_I_DECODER_H
 
-#include "i_decode_state_cb.h"
-
 typedef void (*MessageCallback)(void*, int, float);
 typedef long (*AVSyncCallback)(void*);
 

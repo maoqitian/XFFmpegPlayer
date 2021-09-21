@@ -1,6 +1,6 @@
 //
-// Created by lenovo on 2020/12/15 0015.
-// 基础解码器
+// Created by maoqitian on 2020/12/15 0015.
+// 基础解码器 提供解码基础方法
 
 #include "base_decoder.h"
 #include "utils/time.c"
@@ -12,7 +12,7 @@ void BaseDecoder::Start() {
         //解码线程不存在创建
         StartDecodingThread();
     } else{
-        //读写保护
+        //获取锁 读写保护
         std::unique_lock<std::mutex> lock(m_Mutex);
         m_DecoderState = STATE_DECODING;
         m_Cond.notify_all();
@@ -72,7 +72,84 @@ void BaseDecoder::UnInit() {
 
 //解码器初始化 使用 ffmpeg 提供方法
 int BaseDecoder::InitFFDecoder() {
-    return 0;
+    int result = -1;
+    do {
+       //1 创建封装格式上下文
+       m_AVFormatContext = avformat_alloc_context();
+
+       //2 打开文件
+       if(avformat_open_input(&m_AVFormatContext,m_Url,NULL,NULL)!=0){
+           LOGCATE("BaseDecoder::InitFFDecoder avformat_open_input fail.");
+           break;
+       }
+
+       //3 获取音视频流信息
+       if(avformat_find_stream_info(m_AVFormatContext,NULL) < 0){
+           LOGCATE("BaseDecoder::InitFFDecoder avformat_find_stream_info fail.");
+           break;
+       }
+
+       //4获取音视频流索引
+        for (int i = 0; i < m_AVFormatContext-> nb_streams; i++) {
+            if(m_AVFormatContext -> streams[i]->codecpar->codec_type == m_MediaType){
+                m_StreamIndex = i;
+                break;
+            }
+        }
+        //没找到音视频流索引 退出
+        if (m_StreamIndex == -1){
+            LOGCATE("BaseDecoder::InitFFDecoder Fail to find stream index.");
+            break;
+        }
+
+        //5. 获取解码参数
+        AVCodecParameters *codecParameters = m_AVFormatContext-> streams[m_StreamIndex]->codecpar;
+
+        //6. 获取解码器
+        m_AVCodec = avcodec_find_decoder(codecParameters->codec_id);
+        if (m_AVCodec == nullptr){
+            LOGCATE("BaseDecoder::InitFFDecoder avcodec_find_decoder fail.");
+            break;
+        }
+
+        //7. 创建解码器上下文
+        m_AVCodecContext = avcodec_alloc_context3(m_AVCodec);
+        if (avcodec_parameters_to_context(m_AVCodecContext,codecParameters)!=0){
+            LOGCATE("BaseDecoder::InitFFDecoder avcodec_parameters_to_context fail.");
+            break;
+        }
+
+        //设置解码参数 每次读取buff大小 超时时间 等
+        AVDictionary *pAVDictionary = nullptr;
+        av_dict_set(&pAVDictionary, "buffer_size", "1024000", 0);
+        av_dict_set(&pAVDictionary, "stimeout", "20000000", 0);
+        av_dict_set(&pAVDictionary, "max_delay", "30000000", 0);
+        av_dict_set(&pAVDictionary, "rtsp_transport", "tcp", 0);
+
+        //8. 打开解码器
+        result = avcodec_open2(m_AVCodecContext,m_AVCodec,&pAVDictionary);
+        if(result < 0){
+            LOGCATE("BaseDecoder::InitFFDecoder avcodec_open2 fail.result=%d", result);
+            break;
+        }
+        //解码成功
+        result = 0;
+
+        //总时间长度 ms
+        m_Duration = m_AVFormatContext->duration/AV_TIME_BASE * 1000;
+
+        // AVPacket 存放编码数据
+        m_Packet = av_packet_alloc();
+        //解码后的数据 帧
+        m_Frame = av_frame_alloc();
+    } while (false);
+
+    //解码失败
+    if(result != 0 && m_MsgContext && m_MsgCallback){
+        m_MsgCallback(m_MsgContext,MSG_DECODER_INIT_ERROR,0);
+    }
+
+    return result;
 }
 
 //释放解码器
@@ -108,7 +185,41 @@ void BaseDecoder::StartDecodingThread() {
 }
 
 void BaseDecoder::DecodingLoop() {
+    LOGCATE("BaseDecoder::DecodingLoop start, m_MediaType=%d", m_MediaType);
 
+    {
+        //获取锁 读写保护
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        m_DecoderState = STATE_DECODING;
+        lock.unlock();
+    }
+
+    for(;;){
+        while (m_DecoderState == STATE_PAUSE){
+            //暂停
+            std::unique_lock<std::mutex> lock(m_Mutex);
+            LOGCATE("BaseDecoder::DecodingLoop waiting, m_MediaType=%d", m_MediaType);
+            m_Cond.wait_for(lock,std::chrono::milliseconds(10));
+            m_StartTimeStamp = GetSysCurrentTime() - m_CurTimeStamp;
+        }
+
+        if(m_DecoderState == STATE_STOP){
+            //停止状态 直接退出
+            break;
+        }
+
+        if(m_StartTimeStamp == -1){
+            m_StartTimeStamp = GetSysCurrentTime();
+        }
+
+        //解码结束 暂停解码
+        if(DecodeOnePacket() != 0){
+            std::unique_lock<std::mutex> lock(m_Mutex);
+            m_DecoderState = STATE_PAUSE;
+        }
+    }
+
+    LOGCATE("BaseDecoder::DecodingLoop end.");
 }
 
 //时间更新
@@ -181,8 +292,73 @@ long BaseDecoder::AVSync() {
     return delay;
 }
 
+//解码一个packet编码数据
 int BaseDecoder::DecodeOnePacket() {
-    return 0;
+    LOGCATE("BaseDecoder::DecodeOnePacket  m_MediaType=%d", m_MediaType);
+    if(m_SeekPosition > 0){
+        //seek to frame 快进处理
+        int64_t seek_target = static_cast<int64_t>(m_SeekPosition * 1000000);//微秒
+        int64_t seek_min = INT64_MIN;
+        int64_t seek_max = INT64_MAX;
+        int seek_ret = avformat_seek_file(m_AVFormatContext,-1,seek_min,seek_target,seek_max,0);
+        if (seek_ret < 0){
+            m_SeekSuccess = false;
+            LOGCATE("BaseDecoder::DecodeOneFrame error while seeking m_MediaType=%d", m_MediaType);
+        } else{
+            if(-1 != m_StreamIndex){
+                avcodec_flush_buffers(m_AVCodecContext);
+            }
+            ClearCache();
+            m_SeekSuccess = true;
+            LOGCATE("BaseDecoder::DecodeOneFrame seekFrame pos=%f, m_MediaType=%d", m_SeekPosition, m_MediaType);
+        }
+    }
+
+    int result = av_read_frame(m_AVFormatContext,m_Packet);
+    while (result == 0){
+        //读取每一帧成功
+        if(m_Packet -> stream_index == m_StreamIndex){
+            //            UpdateTimeStamp(m_Packet);
+//            if(AVSync() > DELAY_THRESHOLD && m_CurTimeStamp > DELAY_THRESHOLD)
+//            {
+//                result = 0;
+//                goto __EXIT;
+//            }
+
+            if(avcodec_send_packet(m_AVCodecContext, m_Packet) == AVERROR_EOF) {
+                //解码结束
+                result = -1;
+                goto __EXIT;
+            }
+            //一个 packet 包含多少 frame
+            int frameCount = 0;
+            while (avcodec_receive_frame(m_AVCodecContext,m_Frame) == 0){
+                //时间戳更新
+                UpdateTimeStamp();
+                //音视频时间同步
+                AVSync();
+                //画面渲染
+                LOGCATE("BaseDecoder::DecodeOnePacket 000 m_MediaType=%d", m_MediaType);
+                OnFrameAvailable(m_Frame);
+                LOGCATE("BaseDecoder::DecodeOnePacket 001 m_MediaType=%d", m_MediaType);
+                frameCount++;
+            }
+            LOGCATE("BaseDecoder::DecodeOneFrame frameCount=%d", frameCount);
+            //判断一个 packet 是否解码完成
+            if(frameCount > 0) {
+                result = 0;
+                goto __EXIT;
+            }
+        }
+
+        av_packet_unref(m_Packet);
+
+        result = av_read_frame(m_AVFormatContext,m_Packet);
+
+    }
+    __EXIT:
+    av_packet_unref(m_Packet);
+    return result;
 }
 
 void BaseDecoder::DoAVDecoding(BaseDecoder *decoder) {

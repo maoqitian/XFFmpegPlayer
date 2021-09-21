@@ -14,12 +14,12 @@
 class VideoDrawer: public Drawer, public VideoRender {
 public:
 
-    VideoDrawer();
+    VideoDrawer(int type);
     ~VideoDrawer();
 
-    void InitRender(JNIEnv *env, int video_width, int video_height, int *dst_size) override ;
-    void Render(OneFrame *one_frame) override ;
-    void ReleaseRender() override ;
+    void InitRender(JNIEnv *env, int video_width, int video_height, int *dst_size)  ;
+    void Render(OneFrame *one_frame)  ;
+    void ReleaseRender()  ;
 
     const char* GetVertexShader() override;
     const char* GetFragmentShader() override;

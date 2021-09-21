@@ -50,7 +50,7 @@ void Drawer::DoDraw() {
 void Drawer::CreateTextureId() {
     if (m_texture_id == 0) {
         glGenTextures(1, &m_texture_id);
-        LOGI(TAG, "Create texture id : %d, %x", m_texture_id, glGetError())
+        //LOGI(TAG, "Create texture id : %d, %x", m_texture_id, glGetError())
     }
 }
 
@@ -58,7 +58,7 @@ void Drawer::CreateProgram() {
     if (m_program_id == 0) {
         //创建一个空的OpenGLES程序，注意：需要在OpenGL渲染线程中创建，否则无法渲染
         m_program_id = glCreateProgram();
-        LOGI(TAG, "create gl program : %d, %x", m_program_id, glGetError())
+        //LOGI(TAG, "create gl program : %d, %x", m_program_id, glGetError())
         if (glGetError() != GL_NO_ERROR) {
             return;
         }
@@ -90,7 +90,7 @@ void Drawer::CreateProgram() {
 }
 
 GLuint Drawer::LoadShader(GLenum type, const GLchar *shader_code) {
-    LOGI(TAG, "Load shader:\n %s", shader_code)
+    //LOGI(TAG, "Load shader:\n %s", shader_code)
     //根据type创建顶点着色器或者片元着色器
     GLuint shader = glCreateShader(type);
     //将资源加入到着色器中，并编译
@@ -109,7 +109,7 @@ GLuint Drawer::LoadShader(GLenum type, const GLchar *shader_code) {
             GLchar* infoLog = (GLchar*) malloc(sizeof(GLchar) * infoLen);
 
             glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
-            LOGI(TAG, "Error compiling shader:\n%s\n", infoLog);
+            //LOGI(TAG, "Error compiling shader:\n%s\n", infoLog);
 
             free(infoLog);
         }

@@ -13,86 +13,54 @@
 extern "C" {
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
-};
+#include <libavcodec/jni.h>
+}
 
 class VideoDecoder  : public BaseDecoder{
-    const char *TAG = "VideoDecoder";
-
-    //视频数据目标格式
-    const AVPixelFormat DST_FORMAT = AV_PIX_FMT_RGBA;
-
-    //存放YUV转换为RGB后的数据
-    AVFrame *m_rgb_frame = NULL;
-
-    uint8_t *m_buf_for_rgb_frame = NULL;
-
-    //视频格式转换器
-    SwsContext *m_sws_ctx = NULL;
-
-    //视频渲染器
-    VideoRender *m_video_render = NULL;
-
-    //显示的目标宽（即画面显示时的实际宽度，将通过后续渲染器中具体的窗户大小计算得出）
-    int m_dst_w;
-    //显示的目标高（即画面显示时的实际高度，将通过后续渲染器中具体的窗户大小计算得出）
-    int m_dst_h;
-
-    /**
-     * 初始化渲染器
-     */
-    void InitRender(JNIEnv *env);
-
-    /**
-     * 初始化显示器
-     * @param env
-     */
-    void InitBuffer();
-
-    /**
-     * 初始化视频数据转换器
-     */
-    void InitSws();
 
 public:
     //构造函数
-    VideoDecoder(JNIEnv *env, jstring path, bool for_synthesizer = false);
+    VideoDecoder(char *url){
+        Init(url,AVMEDIA_TYPE_VIDEO);
+    }
     //析构函数
-    ~VideoDecoder();
-    void SetRender(VideoRender *render);
-
-protected:
-    AVMediaType GetMediaType() override {
-        return AVMEDIA_TYPE_VIDEO;
+    ~VideoDecoder(){
+      UnInit();
     }
 
-    /**
-     * 是否需要循环解码
-     */
-    bool NeedLoopDecode() override;
+    int GetVideoWidth()
+    {
+        return m_VideoWidth;
+    }
+    int GetVideoHeight()
+    {
+        return m_VideoHeight;
+    }
 
-    /**
-     * 准备解码环境
-     * 注：在解码线程中回调
-     * @param env 解码线程绑定的jni环境
-     */
-    void Prepare(JNIEnv *env) override;
+    void SetVideoRender(VideoRender *videoRender)
+    {
+        m_VideoRender = videoRender;
+    }
 
-    /**
-     * 渲染
-     * 注：在解码线程中回调
-     * @param frame 解码RGBA数据
-     */
-    void Render(AVFrame *frame) override;
+private:
+    virtual void OnDecoderReady();
+    virtual void OnDecoderDone();
+    virtual void OnFrameAvailable(AVFrame *frame);
 
-    /**
-     * 释放回调
-     */
-    void Release() override;
+    const AVPixelFormat DST_PIXEL_FORMAT = AV_PIX_FMT_RGBA;
 
-    const char *const LogSpec() override {
-        return "VIDEO";
-    };
+    int m_VideoWidth = 0;
+    int m_VideoHeight = 0;
 
+    int m_RenderWidth = 0;
+    int m_RenderHeight = 0;
+
+    AVFrame *m_RGBAFrame = nullptr;
+    uint8_t *m_FrameBuffer = nullptr;
+
+    VideoRender *m_VideoRender = nullptr;
+    SwsContext *m_SwsContext = nullptr;
+    //SingleVideoRecorder *m_pVideoRecorder = nullptr;
 };
 
 

@@ -9,9 +9,7 @@
 #include <string>
 #include <thread>
 #include "i_decoder.h"
-#include "decode_state.h"
 #include "utils/FFLog.h"
-#include "i_decode_state_cb.h"
 #include <utils/logger.h>
 #include <thread>
 

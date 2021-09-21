@@ -4,7 +4,7 @@
 //
 
 #include "video_drawer.h"
-VideoDrawer::VideoDrawer(): Drawer(0, 0) {
+VideoDrawer::VideoDrawer(int type) : VideoRender(type), Drawer(0, 0) {
 }
 
 VideoDrawer::~VideoDrawer() {

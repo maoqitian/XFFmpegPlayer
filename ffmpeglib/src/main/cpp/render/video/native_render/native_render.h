@@ -17,31 +17,18 @@ extern "C"{
 };
 
 class NativeRender : public VideoRender{
-    const char *TAG = "NativeRender";
-
-    // Surface引用，必须使用引用，否则无法在线程中操作
-    jobject m_surface_ref = NULL;
-
-    // 存放输出到屏幕的缓存数据
-    ANativeWindow_Buffer m_out_buffer;
-
-    // 本地窗口
-    ANativeWindow *m_native_window = NULL;
-
-    //显示的目标宽
-    int m_dst_w;
-
-    //显示的目标高
-    int m_dst_h;
 public:
-    //构造函数
     NativeRender(JNIEnv *env, jobject surface);
-    //析构函数
-    ~NativeRender();
-    //VideoRender 接口方法
-    void InitRender(JNIEnv *env, int video_width, int video_height, int *dst_size) override ;
-    void Render(OneFrame *one_frame) override ;
-    void ReleaseRender() override ;
+    virtual ~NativeRender();
+    virtual void Init(int videoWidth, int videoHeight, int *dstSize);
+    virtual void RenderVideoFrame(NativeImage *pImage);
+    virtual void UnInit();
+
+private:
+    ANativeWindow_Buffer m_NativeWindowBuffer;
+    ANativeWindow *m_NativeWindow = nullptr;
+    int m_DstWidth;
+    int m_DstHeight;
 };
 
 #endif //FFMPEGPLAYER_NATIVE_RENDER_H
