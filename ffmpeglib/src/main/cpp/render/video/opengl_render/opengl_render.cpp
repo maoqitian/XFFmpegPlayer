@@ -33,7 +33,7 @@ void OpenGLRender::sRenderThread(std::shared_ptr<OpenGLRender> that) {
 
     //将线程附加到虚拟机，并获取env
     if (that->m_jvm_for_thread->AttachCurrentThread(&env, NULL) != JNI_OK) {
-        LOGE(that->TAG, "线程初始化异常");
+        //LOGE(that->TAG, "线程初始化异常");
         return;
     }
 
@@ -46,7 +46,7 @@ void OpenGLRender::sRenderThread(std::shared_ptr<OpenGLRender> that) {
     while (true) {
         switch (that->m_state) {
             case FRESH_SURFACE:
-                LOGI(that->TAG, "Loop Render FRESH_SURFACE")
+                //LOGI(that->TAG, "Loop Render FRESH_SURFACE")
                 that->InitDspWindow(env);
                 that->CreateSurface();
                 that->m_state = RENDERING;
@@ -55,12 +55,12 @@ void OpenGLRender::sRenderThread(std::shared_ptr<OpenGLRender> that) {
                 that->Render();
                 break;
             case SURFACE_DESTROY:
-                LOGI(that->TAG, "Loop Render SURFACE_DESTROY")
+                //LOGI(that->TAG, "Loop Render SURFACE_DESTROY")
                 that->DestroySurface();
                 that->m_state = NO_SURFACE;
                 break;
             case STOP:
-                LOGI(that->TAG, "Loop Render STOP")
+                //LOGI(that->TAG, "Loop Render STOP")
                 //解除线程和jvm关联
                 that->ReleaseRender();
                 that->m_jvm_for_thread->DetachCurrentThread();
@@ -91,7 +91,7 @@ void OpenGLRender::InitDspWindow(JNIEnv *env) {
         ANativeWindow_setBuffersGeometry(m_native_window, m_window_width,
                                          m_window_height, WINDOW_FORMAT_RGBA_8888);
 
-        LOGD(TAG, "View Port width: %d, height: %d", m_window_width, m_window_height)
+        //LOGD(TAG, "View Port width: %d, height: %d", m_window_width, m_window_height)
     }
 }
 
@@ -119,7 +119,7 @@ void OpenGLRender::Render() {
             uint8_t *rgb = (uint8_t *) malloc(size);
             if (rgb == NULL) {
                 realloc(rgb, size);
-                LOGE(TAG, "内存分配失败： %d", rgb)
+                //LOGE(TAG, "内存分配失败： %d", rgb)
             }
             glReadPixels(0, 0, m_window_width, m_window_height, GL_RGBA, GL_UNSIGNED_BYTE, rgb);
             m_pixel_receiver->ReceivePixel(rgb);

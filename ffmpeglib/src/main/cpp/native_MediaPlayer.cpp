@@ -1,5 +1,6 @@
 //
-// Created by llm on 20-3-21.
+// Created by maoqitian on 2021/9/20.
+// Description: FFMediaPlayer 播放器 对外暴露方法
 //
 
 #include <jni.h>
@@ -19,77 +20,226 @@ extern "C" {
 #include <player/player.h>
 #include <include/libavcodec/jni.h>
 #include <player/gl_player.h>
+#include <AudioGLRender.h>
 #include "utils/FFLog.h"
+#include "FFMediaPlayer.h"
+#include "BaseGLRender.h"
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_ffmpegInfo(JNIEnv *env,jobject  /* this */) {
-    char info[40000] = {0};
-    AVCodec *c_temp = av_codec_next(NULL);
-    while (c_temp != NULL) {
-        if (c_temp->decode != NULL) {
-            sprintf(info, "%sdecode:", info);
-        } else {
-            sprintf(info, "%sencode:", info);
-        }
-        switch (c_temp->type) {
-            case AVMEDIA_TYPE_VIDEO:
-                sprintf(info, "%s(video):", info);
-                break;
-            case AVMEDIA_TYPE_AUDIO:
-                sprintf(info, "%s(audio):", info);
-                break;
-            default:
-                sprintf(info, "%s(other):", info);
-                break;
-        }
-        sprintf(info, "%s[%s]\n", info, c_temp->name);
-        c_temp = c_temp->next;
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1GetFFmpegVersion(JNIEnv *env, jobject thiz) {
+    char strBuffer[1024 * 4] = {0};
+    strcat(strBuffer, "libavcodec : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVCODEC_VERSION));
+    strcat(strBuffer, "\nlibavformat : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVFORMAT_VERSION));
+    strcat(strBuffer, "\nlibavutil : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVUTIL_VERSION));
+    strcat(strBuffer, "\nlibavfilter : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVFILTER_VERSION));
+    strcat(strBuffer, "\nlibswresample : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBSWRESAMPLE_VERSION));
+    strcat(strBuffer, "\nlibswscale : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBSWSCALE_VERSION));
+    strcat(strBuffer, "\navcodec_configure : \n");
+    strcat(strBuffer, avcodec_configuration());
+    strcat(strBuffer, "\navcodec_license : ");
+    strcat(strBuffer, avcodec_license());
+    LOGCATE("GetFFmpegVersion\n%s", strBuffer);
+
+    //ASanTestCase::MainTest();
+
+    return env->NewStringUTF(strBuffer);
+}
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1Init(JNIEnv *env, jobject thiz, jstring jurl,
+                                                 jint render_type, jobject surface) {
+
+    const char* url = env->GetStringUTFChars(jurl, nullptr);
+    FFMediaPlayer *player = new FFMediaPlayer();
+    player->Init(env,thiz,const_cast<char *>(url),render_type,surface);
+    env->ReleaseStringUTFChars(jurl,url);
+    return reinterpret_cast<jlong>(player);
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1Play(JNIEnv *env, jobject thiz, jlong player_handle) {
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        ffMediaPlayer->Play();
     }
-    return env->NewStringUTF(info);
 }
-
-// native surface 渲染
-extern "C" JNIEXPORT jint JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_createPlayer(JNIEnv *env,
-                                                       jobject  /* this */,
-                                                       jstring path,
-                                                       jobject surface) {
-    Player *player = new Player(env, path, surface);
-    return (jint)(size_t) player;
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1SeekToPosition(JNIEnv *env, jobject thiz,
+                                                           jlong player_handle, jfloat position) {
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        ffMediaPlayer->SeekToPosition(position);
+    }
 }
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_play(JNIEnv *env,jobject  /* this */,jint player) {
-    Player *p = (Player *) player;
-    p->play();
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1Pause(JNIEnv *env, jobject thiz, jlong player_handle) {
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        ffMediaPlayer->Pause();
+    }
 }
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_pause(JNIEnv *env,jobject  /* this */,jint player) {
-    Player *p = (Player *) player;
-    p->pause();
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1Stop(JNIEnv *env, jobject thiz, jlong player_handle) {
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        ffMediaPlayer->Stop();
+    }
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1Release(JNIEnv *env, jobject thiz,
+                                                    jlong player_handle) {
 
-//使用OpenGL ES 渲染
-
-extern "C" JNIEXPORT jint JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_createOpenGLPlayer(JNIEnv *env,
-                                                 jobject  /* this */,
-                                                 jstring path,
-                                                 jobject surface) {
-    GLPlayer *player = new GLPlayer(env, path);
-    player->SetSurface(surface);
-    return (jint)(size_t) player;
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        ffMediaPlayer->UnInit();
+    }
 }
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1GetMediaParams(JNIEnv *env, jobject thiz,
+                                                           jlong player_handle, jint param_type) {
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_playOrPauseOpenGL(JNIEnv *env,jobject  /* this */,jint player) {
-    GLPlayer *p = (GLPlayer *) player;
-    p->PlayOrPause();
+    long value = 0;
+    if (player_handle != 0){
+        FFMediaPlayer *ffMediaPlayer = reinterpret_cast<FFMediaPlayer *>(player_handle);
+        value = ffMediaPlayer->GetMediaParams(param_type);
+    }
+
+    return value;
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1OnSurfaceCreated(JNIEnv *env, jobject thiz,
+                                                             jint render_type) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+            //case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            //break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1OnSurfaceChanged(JNIEnv *env, jobject thiz,
+                                                             jint render_type, jint width,
+                                                             jint height) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnSurfaceChanged(width,height);
+            break;
+        case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1OnDrawFrame(JNIEnv *env, jobject thiz,
+                                                        jint render_type) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnDrawFrame();
+            break;
+            case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1SetGesture(JNIEnv *env, jobject thiz, jint render_type,
+                                                       jfloat x_rotate_angle, jfloat y_rotate_angle,
+                                                       jfloat scale) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            //VideoGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
+            break;
+        case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
+            break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_native_1SetTouchLoc(JNIEnv *env, jobject thiz, jint render_type,
+                                                        jfloat touch_x, jfloat touch_y) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            //VideoGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);
+            break;
+        case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);
+            break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_00024Companion_native_1GetFFmpegVersion(JNIEnv *env,
+                                                                            jobject thiz) {
+    char strBuffer[1024 * 4] = {0};
+    strcat(strBuffer, "libavcodec : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVCODEC_VERSION));
+    strcat(strBuffer, "\nlibavformat : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVFORMAT_VERSION));
+    strcat(strBuffer, "\nlibavutil : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVUTIL_VERSION));
+    strcat(strBuffer, "\nlibavfilter : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBAVFILTER_VERSION));
+    strcat(strBuffer, "\nlibswresample : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBSWRESAMPLE_VERSION));
+    strcat(strBuffer, "\nlibswscale : ");
+    strcat(strBuffer, AV_STRINGIFY(LIBSWSCALE_VERSION));
+    strcat(strBuffer, "\navcodec_configure : \n");
+    strcat(strBuffer, avcodec_configuration());
+    strcat(strBuffer, "\navcodec_license : ");
+    strcat(strBuffer, avcodec_license());
+    LOGCATE("GetFFmpegVersion\n%s", strBuffer);
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_mao_ffplayer_FFMediaPlayer_stopPlayOpenGL(JNIEnv *env,jobject  /* this */,jint player) {
-    GLPlayer *p = (GLPlayer *) player;
-    p->Release();
+    //ASanTestCase::MainTest();
+
+    return env->NewStringUTF(strBuffer);
 }

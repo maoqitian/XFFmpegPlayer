@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.mao.ffplayer.FFMediaPlayer
 import com.permissionx.guolindev.PermissionX
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -31,6 +32,8 @@ class MainActivity : AppCompatActivity(),View.OnClickListener{
                     Toast.makeText(this, "These permissions are denied: $deniedList", Toast.LENGTH_LONG).show()
                 }
             }
+
+        tvText.text = FFMediaPlayer.GetFFmpegVersion()
     }
     override fun onClick(v: View) {
          when(v.id){

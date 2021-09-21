@@ -4,218 +4,296 @@
 //
 
 #include "opensl_render.h"
+#include "AudioGLRender.h"
 #include <thread>
 #include <unistd.h>
 #include <utils/logger.h>
 
 
-OpenSLRender::OpenSLRender() {
+void OpenSLRender::Init() {
 
-}
+    LOGCATE("OpenSLRender::Init");
 
-OpenSLRender::~OpenSLRender() {
-
-}
-
-void OpenSLRender::InitRender() {
-    if (!CreateEngine()) return;
-    if (!CreateOutputMixer()) return;
-    if (!ConfigPlayer()) return;
-    //渲染线程
-    std::thread t(sRenderPcm, this);
-    t.detach();
-}
-
-void OpenSLRender::Render(uint8_t *pcm, int size) {
-    if (m_pcm_player) {
-        if (pcm != NULL && size > 0) {
-            while (m_data_queue.size() >= 2) {
-                SendCacheReadySignal();
-                usleep(20000);
-            }
-            // 将数据复制一份，并压入队列
-            uint8_t *data = (uint8_t *) malloc(size);
-            memcpy(data, pcm, size);
-
-            PcmData *pcmData = new PcmData(data, size);
-            m_data_queue.push(pcmData);
-
-            // 通知播放线程推出等待，恢复播放
-            SendCacheReadySignal();
+    int result = -1;
+    do {
+        result = CreateEngine();
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::Init CreateEngine fail. result=%d", result);
+            break;
         }
-    } else {
-        free(pcm);
+
+        result = CreateOutputMixer();
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::Init CreateOutputMixer fail. result=%d", result);
+            break;
+        }
+
+        result = CreateAudioPlayer();
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::Init CreateAudioPlayer fail. result=%d", result);
+            break;
+        }
+
+        m_thread = new std::thread(CreateSLWaitingThread, this);
+
+    } while (false);
+
+    if(result != SL_RESULT_SUCCESS) {
+        LOGCATE("OpenSLRender::Init fail. result=%d", result);
+        UnInit();
+    }
+
+}
+
+void OpenSLRender::ClearAudioCache() {
+    std::unique_lock<std::mutex> lock(m_Mutex);
+    for (int i = 0; i < m_AudioFrameQueue.size(); ++i) {
+        AudioFrame *audioFrame = m_AudioFrameQueue.front();
+        m_AudioFrameQueue.pop();
+        delete audioFrame;
     }
 }
 
-void OpenSLRender::ReleaseRender() {
-    //设置停止状态
-    if (m_pcm_player) {
-        (*m_pcm_player)->SetPlayState(m_pcm_player, SL_PLAYSTATE_STOPPED);
-        m_pcm_player = NULL;
-    }
+void OpenSLRender::RenderAudioFrame(uint8_t *pData, int dataSize) {
+    LOGCATE("OpenSLRender::RenderAudioFrame pData=%p, dataSize=%d", pData, dataSize);
+    if(m_AudioPlayerPlay) {
+        if (pData != nullptr && dataSize > 0) {
 
-    // 先通知回调接口结束，否则可能导致无法销毁：m_pcm_player_obj
-    SendCacheReadySignal();
+            //temp resolution, when queue size is too big.
+            while(GetAudioFrameQueueSize() >= MAX_QUEUE_BUFFER_SIZE && !m_Exit)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(15));
+            }
 
-    //销毁播放器
-    if (m_pcm_player_obj) {
-        (*m_pcm_player_obj)->Destroy(m_pcm_player_obj);
-        m_pcm_player_obj = NULL;
-        m_pcm_buffer = NULL;
-    }
-    //销毁混音器
-    if (m_output_mix_obj) {
-        (*m_output_mix_obj)->Destroy(m_output_mix_obj);
-        m_output_mix_obj = NULL;
-    }
-    //销毁引擎
-    if (m_engine_obj) {
-        (*m_engine_obj)->Destroy(m_engine_obj);
-        m_engine_obj = NULL;
-        m_engine = NULL;
-    }
-    //释放缓存数据
-    for (int i = 0; i < m_data_queue.size(); ++i) {
-        PcmData *pcm = m_data_queue.front();
-        m_data_queue.pop();
-        delete pcm;
+            std::unique_lock<std::mutex> lock(m_Mutex);
+            AudioFrame *audioFrame = new AudioFrame(pData, dataSize);
+            m_AudioFrameQueue.push(audioFrame);
+            m_Cond.notify_all();
+            lock.unlock();
+        }
     }
 }
 
-//创建 openGL SE 引擎
-bool OpenSLRender::CreateEngine() {
-    SLresult result = slCreateEngine(&m_engine_obj, 0, NULL, 0, NULL, NULL);
-    if (CheckError(result, "Engine")) return false;
+void OpenSLRender::UnInit() {
+    LOGCATE("OpenSLRender::UnInit");
 
-    result = (*m_engine_obj)->Realize(m_engine_obj, SL_BOOLEAN_FALSE);
-    if (CheckError(result, "Engine Realize")) return false;
-
-    result = (*m_engine_obj)->GetInterface(m_engine_obj, SL_IID_ENGINE, &m_engine);
-    return !CheckError(result, "Engine Interface");
-}
-
-bool OpenSLRender::CreateOutputMixer() {
-    const SLInterfaceID mids[1] = {SL_IID_ENVIRONMENTALREVERB};
-    const SLboolean mreq[1] = {SL_BOOLEAN_FALSE};
-    SLresult result = (*m_engine)->CreateOutputMix(m_engine, &m_output_mix_obj, 1, mids, mreq);
-    if (CheckError(result, "Output Mix")) return false;
-
-    result = (*m_output_mix_obj)->Realize(m_output_mix_obj, SL_BOOLEAN_FALSE);
-    if (CheckError(result, "Output Mix Realize")) return false;
-
-    result = (*m_output_mix_obj)->GetInterface(m_output_mix_obj, SL_IID_ENVIRONMENTALREVERB, &m_output_mix_evn_reverb);
-    if (CheckError(result, "Output Mix Env Reverb")) return false;
-
-    if (result == SL_RESULT_SUCCESS) {
-        (*m_output_mix_evn_reverb)->SetEnvironmentalReverbProperties(m_output_mix_evn_reverb, &m_reverb_settings);
+    if (m_AudioPlayerPlay) {
+        (*m_AudioPlayerPlay)->SetPlayState(m_AudioPlayerPlay, SL_PLAYSTATE_STOPPED);
+        m_AudioPlayerPlay = nullptr;
     }
-    return true;
+
+    std::unique_lock<std::mutex> lock(m_Mutex);
+    m_Exit = true;
+    m_Cond.notify_all();
+    lock.unlock();
+
+    if (m_AudioPlayerObj) {
+        (*m_AudioPlayerObj)->Destroy(m_AudioPlayerObj);
+        m_AudioPlayerObj = nullptr;
+        m_BufferQueue = nullptr;
+    }
+
+    if (m_OutputMixObj) {
+        (*m_OutputMixObj)->Destroy(m_OutputMixObj);
+        m_OutputMixObj = nullptr;
+    }
+
+    if (m_EngineObj) {
+        (*m_EngineObj)->Destroy(m_EngineObj);
+        m_EngineObj = nullptr;
+        m_EngineEngine = nullptr;
+    }
+
+    lock.lock();
+    for (int i = 0; i < m_AudioFrameQueue.size(); ++i) {
+        AudioFrame *audioFrame = m_AudioFrameQueue.front();
+        m_AudioFrameQueue.pop();
+        delete audioFrame;
+    }
+    lock.unlock();
+
+    if(m_thread != nullptr)
+    {
+        m_thread->join();
+        delete m_thread;
+        m_thread = nullptr;
+    }
+
+    //AudioGLRender::ReleaseInstance();
 }
 
-bool OpenSLRender::ConfigPlayer() {
-    //配置PCM格式信息
-    SLDataLocator_AndroidSimpleBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, SL_QUEUE_BUFFER_COUNT};
+int OpenSLRender::CreateEngine() {
+    SLresult result = SL_RESULT_SUCCESS;
+    do {
+        result = slCreateEngine(&m_EngineObj, 0, nullptr, 0, nullptr, nullptr);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateEngine slCreateEngine fail. result=%d", result);
+            break;
+        }
+
+        result = (*m_EngineObj)->Realize(m_EngineObj, SL_BOOLEAN_FALSE);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateEngine Realize fail. result=%d", result);
+            break;
+        }
+
+        result = (*m_EngineObj)->GetInterface(m_EngineObj, SL_IID_ENGINE, &m_EngineEngine);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateEngine GetInterface fail. result=%d", result);
+            break;
+        }
+
+    } while (false);
+    return result;
+}
+
+int OpenSLRender::CreateOutputMixer() {
+    SLresult result = SL_RESULT_SUCCESS;
+    do {
+        const SLInterfaceID mids[1] = {SL_IID_ENVIRONMENTALREVERB};
+        const SLboolean mreq[1] = {SL_BOOLEAN_FALSE};
+
+        result = (*m_EngineEngine)->CreateOutputMix(m_EngineEngine, &m_OutputMixObj, 1, mids, mreq);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateOutputMixer CreateOutputMix fail. result=%d", result);
+            break;
+        }
+
+        result = (*m_OutputMixObj)->Realize(m_OutputMixObj, SL_BOOLEAN_FALSE);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateOutputMixer CreateOutputMix fail. result=%d", result);
+            break;
+        }
+
+    } while (false);
+
+    return result;
+}
+
+int OpenSLRender::CreateAudioPlayer() {
+    SLDataLocator_AndroidSimpleBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
     SLDataFormat_PCM pcm = {
-            SL_DATAFORMAT_PCM,//播放pcm格式的数据
-            (SLuint32)2,//2个声道（立体声）
-            SL_SAMPLINGRATE_44_1,//44100hz的频率
-            SL_PCMSAMPLEFORMAT_FIXED_16,//位数 16位
-            SL_PCMSAMPLEFORMAT_FIXED_16,//和位数一致就行
-            SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,//立体声（前左前右）
-            SL_BYTEORDER_LITTLEENDIAN//结束标志
+            SL_DATAFORMAT_PCM,//format type
+            (SLuint32)2,//channel count
+            SL_SAMPLINGRATE_44_1,//44100hz
+            SL_PCMSAMPLEFORMAT_FIXED_16,// bits per sample
+            SL_PCMSAMPLEFORMAT_FIXED_16,// container size
+            SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,// channel mask
+            SL_BYTEORDER_LITTLEENDIAN // endianness
     };
     SLDataSource slDataSource = {&android_queue, &pcm};
 
-    //配置音频池
-    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, m_output_mix_obj};
-    SLDataSink slDataSink = {&outputMix, NULL};
+    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, m_OutputMixObj};
+    SLDataSink slDataSink = {&outputMix, nullptr};
 
     const SLInterfaceID ids[3] = {SL_IID_BUFFERQUEUE, SL_IID_EFFECTSEND, SL_IID_VOLUME};
     const SLboolean req[3] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
 
-    SLresult result = (*m_engine)->CreateAudioPlayer(m_engine, &m_pcm_player_obj, &slDataSource, &slDataSink, 3, ids, req);
-    if (CheckError(result, "Player")) return false;
+    SLresult result;
 
-    //初始化播放器
-    result = (*m_pcm_player_obj)->Realize(m_pcm_player_obj, SL_BOOLEAN_FALSE);
-    if (CheckError(result, "Player Realize")) return false;
+    do {
 
-    //得到接口后调用，获取Player接口
-    result = (*m_pcm_player_obj)->GetInterface(m_pcm_player_obj, SL_IID_PLAY, &m_pcm_player);
-    if (CheckError(result, "Player Interface")) return false;
+        result = (*m_EngineEngine)->CreateAudioPlayer(m_EngineEngine, &m_AudioPlayerObj, &slDataSource, &slDataSink, 3, ids, req);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer CreateAudioPlayer fail. result=%d", result);
+            break;
+        }
 
-    //注册回调缓冲区，获取缓冲队列接口
-    result = (*m_pcm_player_obj)->GetInterface(m_pcm_player_obj, SL_IID_BUFFERQUEUE, &m_pcm_buffer);
-    if (CheckError(result, "Player Queue Buffer")) return false;
+        result = (*m_AudioPlayerObj)->Realize(m_AudioPlayerObj, SL_BOOLEAN_FALSE);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer Realize fail. result=%d", result);
+            break;
+        }
 
-    //缓冲接口回调
-    result = (*m_pcm_buffer)->RegisterCallback(m_pcm_buffer, sReadPcmBufferCbFun, this);
-    if (CheckError(result, "Register Callback Interface")) return false;
+        result = (*m_AudioPlayerObj)->GetInterface(m_AudioPlayerObj, SL_IID_PLAY, &m_AudioPlayerPlay);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer GetInterface fail. result=%d", result);
+            break;
+        }
 
-    //获取音量接口
-    result = (*m_pcm_player_obj)->GetInterface(m_pcm_player_obj, SL_IID_VOLUME, &m_pcm_player_volume);
-    if (CheckError(result, "Player Volume Interface")) return false;
+        result = (*m_AudioPlayerObj)->GetInterface(m_AudioPlayerObj, SL_IID_BUFFERQUEUE, &m_BufferQueue);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer GetInterface fail. result=%d", result);
+            break;
+        }
 
-    LOGI(TAG, "OpenSL ES init success")
+        result = (*m_BufferQueue)->RegisterCallback(m_BufferQueue, AudioPlayerCallback, this);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer RegisterCallback fail. result=%d", result);
+            break;
+        }
 
-    return true;
+        result = (*m_AudioPlayerObj)->GetInterface(m_AudioPlayerObj, SL_IID_VOLUME, &m_AudioPlayerVolume);
+        if(result != SL_RESULT_SUCCESS)
+        {
+            LOGCATE("OpenSLRender::CreateAudioPlayer GetInterface fail. result=%d", result);
+            break;
+        }
+
+    } while (false);
+
+    return result;
+}
+
+int OpenSLRender::GetAudioFrameQueueSize() {
+    std::unique_lock<std::mutex> lock(m_Mutex);
+    return m_AudioFrameQueue.size();
 }
 
 void OpenSLRender::StartRender() {
-    while (m_data_queue.empty()) {
-        WaitForCache();
+    while (GetAudioFrameQueueSize() < MAX_QUEUE_BUFFER_SIZE && !m_Exit) {
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        m_Cond.wait_for(lock, std::chrono::milliseconds(10));
+        //m_Cond.wait(lock);
+        lock.unlock();
     }
-    (*m_pcm_player)->SetPlayState(m_pcm_player, SL_PLAYSTATE_PLAYING);
-    sReadPcmBufferCbFun(m_pcm_buffer, this);
-    LOGI(TAG, "openSL render start playing")
+
+    (*m_AudioPlayerPlay)->SetPlayState(m_AudioPlayerPlay, SL_PLAYSTATE_PLAYING);
+    AudioPlayerCallback(m_BufferQueue, this);
+
 }
 
-void OpenSLRender::BlockEnqueue() {
-    if (m_pcm_player == NULL) return;
+void OpenSLRender::HandleAudioFrameQueue() {
+    LOGCATE("OpenSLRender::HandleAudioFrameQueue QueueSize=%lu", m_AudioFrameQueue.size());
+    if (m_AudioPlayerPlay == nullptr) return;
 
-    // 先将已经使用过的数据移除
-    while (!m_data_queue.empty()) {
-        PcmData *pcm = m_data_queue.front();
-        if (pcm->used) {
-            m_data_queue.pop();
-            delete pcm;
-        } else {
-            break;
-        }
+    while (GetAudioFrameQueueSize() < MAX_QUEUE_BUFFER_SIZE && !m_Exit) {
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        m_Cond.wait_for(lock, std::chrono::milliseconds(10));
     }
 
-    // 等待数据缓冲
-    while (m_data_queue.empty() && m_pcm_player != NULL) {// if m_pcm_player is NULL, stop render
-        WaitForCache();
-    }
-
-    PcmData *pcmData = m_data_queue.front();
-    if (NULL != pcmData && m_pcm_player) {
-        SLresult result = (*m_pcm_buffer)->Enqueue(m_pcm_buffer, pcmData->pcm, (SLuint32) pcmData->size);
+    std::unique_lock<std::mutex> lock(m_Mutex);
+    AudioFrame *audioFrame = m_AudioFrameQueue.front();
+    if (nullptr != audioFrame && m_AudioPlayerPlay) {
+        SLresult result = (*m_BufferQueue)->Enqueue(m_BufferQueue, audioFrame->data, (SLuint32) audioFrame->dataSize);
         if (result == SL_RESULT_SUCCESS) {
-            // 只做已经使用标记，在下一帧数据压入前移除
-            // 保证数据能正常使用，否则可能会出现破音
-            pcmData->used = true;
+            AudioGLRender::GetInstance()->UpdateAudioFrame(audioFrame);
+            m_AudioFrameQueue.pop();
+            delete audioFrame;
         }
+
     }
+    lock.unlock();
 }
 
-bool OpenSLRender::CheckError(SLresult result, std::string hint) {
-    if (SL_RESULT_SUCCESS != result) {
-        LOGE(TAG, "OpenSL ES [%s] init fail", hint.c_str())
-        return true;
-    }
-    return false;
+void OpenSLRender::CreateSLWaitingThread(OpenSLRender *openSlRender) {
+    openSlRender->StartRender();
 }
 
-void OpenSLRender::sRenderPcm(OpenSLRender *that) {
-    that->StartRender();
+void OpenSLRender::AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bufferQueue, void *context) {
+    OpenSLRender *openSlRender = static_cast<OpenSLRender *>(context);
+    openSlRender->HandleAudioFrameQueue();
 }
-
-void OpenSLRender::sReadPcmBufferCbFun(SLAndroidSimpleBufferQueueItf bufferQueueItf, void *context) {
-    OpenSLRender *player = (OpenSLRender *)context;
-    player->BlockEnqueue();
-}
-
-

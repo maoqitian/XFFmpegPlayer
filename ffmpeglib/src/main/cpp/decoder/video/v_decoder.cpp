@@ -4,122 +4,156 @@
 
 #include "v_decoder.h"
 
+//准备解码
+void VideoDecoder::OnDecoderReady() {
+    LOGCATE("VideoDecoder::OnDecoderReady");
 
-//构造函数参数直接传递给 BaseDecoder
-VideoDecoder::VideoDecoder(JNIEnv *env, jstring path, bool for_synthesizer):BaseDecoder(env,path,for_synthesizer) {
+    m_VideoWidth = GetCodecContext() -> width;
+    m_RenderHeight = GetCodecContext()-> height;
 
-}
+    if (m_MsgContext && m_MsgCallback){
+        m_MsgCallback(m_MsgContext,MSG_DECODER_READY,0);
+    }
 
-//析构函数
-VideoDecoder::~VideoDecoder(){
-   delete m_video_render;
-}
+    if (m_VideoRender != nullptr){
+        int dstSize[2] = {0};
 
-//准备解码环境
-void VideoDecoder::Prepare(JNIEnv *env) {
+        m_VideoRender -> Init(m_VideoWidth, m_VideoHeight, dstSize);
 
-    InitRender(env);
-    InitBuffer();
-    InitSws();
-}
-//设置视频渲染器
-void VideoDecoder::SetRender(VideoRender *render) {
-     this->m_video_render = render;
-}
+        m_RenderWidth = dstSize[0];
+        m_RenderHeight = dstSize[1];
 
-//初始化渲染器 目前使用本地渲染 native_render
-void VideoDecoder::InitRender(JNIEnv *env) {
-       if(m_video_render != nullptr){
-           //保存画面宽高数组
-           int dst_size[2] ={-1,-1};
-           m_video_render->InitRender(env,width(),height(),dst_size);
-           //获取画面宽高
-           m_dst_w = dst_size[0];
-           m_dst_h = dst_size[1];
-           if(m_dst_w == -1){
-               m_dst_w = width();
-           }
-           if(m_dst_h == -1){
-               m_dst_h = height();
-           }
-           LOGI(TAG, "dst %d, %d", m_dst_w, m_dst_h)
-       } else{
-           LOGE(TAG, "Init render error, you should call SetRender first!")
-       }
-
-
-
-}
-//调用渲染器 Render 方法，进行渲染。
-void VideoDecoder::Render(AVFrame *frame) {
-     sws_scale(m_sws_ctx,frame->data,frame->linesize,0,height(),m_rgb_frame->data,m_rgb_frame->linesize);
-     //一帧数据
-     OneFrame *oneFrame = new OneFrame(m_rgb_frame->data[0],m_rgb_frame->linesize[0],
-                                       frame->pts, time_base(), nullptr, false);
-     //开始渲染
-     m_video_render->Render(oneFrame);
-    if (m_state_cb != NULL) {
-        if (m_state_cb->DecodeOneFrame(this, oneFrame)) {
-            Wait(0, 200);
+        if(m_VideoRender-> GetRenderType() == VIDEO_RENDER_ANWINDOW) {
+            int fps = 25;
+            long videoBitRate = m_RenderWidth * m_RenderHeight * fps * 0.2;
+            //录屏
+            //m_pVideoRecorder = new SingleVideoRecorder("/sdcard/learnffmpeg_output.mp4", m_RenderWidth, m_RenderHeight, videoBitRate, fps);
+            //m_pVideoRecorder->StartRecord();
         }
+
+        m_RGBAFrame = av_frame_alloc();
+        int bufferSize = av_image_get_buffer_size(DST_PIXEL_FORMAT, m_RenderWidth, m_RenderHeight, 1);
+        m_FrameBuffer = (uint8_t *) av_malloc(bufferSize * sizeof(uint8_t));
+        av_image_fill_arrays(m_RGBAFrame->data, m_RGBAFrame->linesize,
+                             m_FrameBuffer, DST_PIXEL_FORMAT, m_RenderWidth, m_RenderHeight, 1);
+
+        m_SwsContext = sws_getContext(m_VideoWidth, m_VideoHeight, GetCodecContext()->pix_fmt,
+                                      m_RenderWidth, m_RenderHeight, DST_PIXEL_FORMAT,
+                                      SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    } else{
+        LOGCATE("VideoDecoder::OnDecoderReady m_VideoRender == null");
     }
 }
 
-//存放数据缓存初始化
-void VideoDecoder::InitBuffer() {
+//解码结束
+void VideoDecoder::OnDecoderDone() {
+    LOGCATE("VideoDecoder::OnDecoderDone");
 
-    //初始化AVFrame
-    m_rgb_frame = av_frame_alloc();
-    //获取缓存大小
-    int numBytes = av_image_get_buffer_size(DST_FORMAT,m_dst_w,m_dst_h,1);
-    //分配内存
-    m_buf_for_rgb_frame = (uint8_t*) av_malloc(numBytes* sizeof(uint8_t));
-    //将内存分配给RgbFrame，并将内存格式化为三个通道后，分别保存其地址
-    av_image_fill_arrays(m_rgb_frame ->data,m_rgb_frame->linesize,
-            m_buf_for_rgb_frame,DST_FORMAT,m_dst_w,m_dst_h,1);
+    if(m_MsgContext && m_MsgCallback){
+        m_MsgCallback(m_MsgContext,MSG_DECODER_DONE,0);
+    }
+
+    if (m_VideoRender){
+        m_VideoRender->UnInit();
+    }
+
+    if(m_RGBAFrame != nullptr) {
+        av_frame_free(&m_RGBAFrame);
+        m_RGBAFrame = nullptr;
+    }
+
+    if(m_FrameBuffer != nullptr) {
+        free(m_FrameBuffer);
+        m_FrameBuffer = nullptr;
+    }
+
+    if(m_SwsContext != nullptr) {
+        sws_freeContext(m_SwsContext);
+        m_SwsContext = nullptr;
+    }
+//录屏
+//    if(m_pVideoRecorder != nullptr) {
+//        m_pVideoRecorder->StopRecord();
+//        delete m_pVideoRecorder;
+//        m_pVideoRecorder = nullptr;
+//    }
+
 }
 
-//数据转换工具初始化
-//视频解码出来以后，数据格式是 YUV ，而屏幕显示的时候需要 RGBA，因此视频解码器中，需要对数据做一层转换
-//swresampel 工具包 sws_scale 既可以实现数据格式的转化，同时可以对画面宽高进行缩放
-void VideoDecoder::InitSws() {
-    //初始化格式转换工具
-    m_sws_ctx = sws_getContext(width(),height(),video_pixel_format(),
-            m_dst_w,m_dst_h,DST_FORMAT,SWS_FAST_BILINEAR, nullptr, nullptr, nullptr);
+//一帧画面设置
+void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
+
+    LOGCATE("VideoDecoder::OnFrameAvailable frame=%p", frame);
+
+    if (m_VideoRender != nullptr && frame != nullptr){
+        NativeImage image;
+        LOGCATE("VideoDecoder::OnFrameAvailable frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", frame->width, frame->height, GetCodecContext()->pix_fmt, frame->linesize[0], frame->linesize[1],frame->linesize[2]);
+
+        if(m_VideoRender->GetRenderType() == VIDEO_RENDER_ANWINDOW){
+            sws_scale(m_SwsContext, frame->data, frame->linesize,0,
+                      m_VideoHeight,m_RGBAFrame->data,m_RGBAFrame->linesize);
+
+            image.format = IMAGE_FORMAT_RGBA;
+            image.width = m_RenderWidth;
+            image.height = m_VideoHeight;
+            image.ppPlane[0] = m_RGBAFrame->data[0];
+            image.pLineSize[0] = image.width * 4;
+        } else if(GetCodecContext()->pix_fmt == AV_PIX_FMT_YUV420P || GetCodecContext()->pix_fmt == AV_PIX_FMT_YUVJ420P){
+            image.format = IMAGE_FORMAT_I420;
+            image.width = frame->width;
+            image.height = frame->height;
+            image.pLineSize[0] = frame->linesize[0];
+            image.pLineSize[1] = frame->linesize[1];
+            image.pLineSize[2] = frame->linesize[2];
+            image.ppPlane[0] = frame->data[0];
+            image.ppPlane[1] = frame->data[1];
+            image.ppPlane[2] = frame->data[2];
+            if(frame->data[0] && frame->data[1] && !frame->data[2] && frame->linesize[0] == frame->linesize[1] && frame->linesize[2] == 0) {
+                // on some android device, output of h264 mediacodec decoder is NV12 兼容某些设备可能出现的格式不匹配问题
+                image.format = IMAGE_FORMAT_NV12;
+            }
+        } else if(GetCodecContext()->pix_fmt == AV_PIX_FMT_NV12){
+            image.format = IMAGE_FORMAT_NV12;
+            image.width = frame->width;
+            image.height = frame->height;
+            image.pLineSize[0] = frame->linesize[0];
+            image.pLineSize[1] = frame->linesize[1];
+            image.ppPlane[0] = frame->data[0];
+            image.ppPlane[1] = frame->data[1];
+        } else if(GetCodecContext()->pix_fmt == AV_PIX_FMT_NV21){
+            image.format = IMAGE_FORMAT_NV21;
+            image.width = frame->width;
+            image.height = frame->height;
+            image.pLineSize[0] = frame->linesize[0];
+            image.pLineSize[1] = frame->linesize[1];
+            image.ppPlane[0] = frame->data[0];
+            image.ppPlane[1] = frame->data[1];
+        } else if(GetCodecContext()->pix_fmt == AV_PIX_FMT_RGBA){
+            image.format = IMAGE_FORMAT_RGBA;
+            image.width = frame->width;
+            image.height = frame->height;
+            image.pLineSize[0] = frame->linesize[0];
+            image.ppPlane[0] = frame->data[0];
+        } else{
+            sws_scale(m_SwsContext, frame->data, frame->linesize, 0,
+                      m_VideoHeight, m_RGBAFrame->data, m_RGBAFrame->linesize);
+            image.format = IMAGE_FORMAT_RGBA;
+            image.width = m_RenderWidth;
+            image.height = m_RenderHeight;
+            image.ppPlane[0] = m_RGBAFrame->data[0];
+            image.pLineSize[0] = image.width * 4;
+        }
+
+        m_VideoRender -> RenderVideoFrame(&image);
+
+        //屏幕录制
+        /*if(m_pVideoRecorder != nullptr) {
+            m_pVideoRecorder->OnFrame2Encode(&image);
+        }*/
+    }
+
+    //回调
+    if(m_MsgContext && m_MsgCallback)
+        m_MsgCallback(m_MsgContext, MSG_REQUEST_RENDER, 0);
+
 }
-
-
-//释放相关资源
-void VideoDecoder::Release() {
-
-    LOGE(TAG,"VIDEO release")
-
-    if(m_rgb_frame != nullptr){
-        av_frame_free(&m_rgb_frame);
-        m_rgb_frame = nullptr;
-    }
-    if(m_buf_for_rgb_frame != nullptr){
-        free(m_buf_for_rgb_frame);
-        m_buf_for_rgb_frame = nullptr;
-    }
-    if(m_sws_ctx != nullptr){
-        sws_freeContext(m_sws_ctx);
-        m_sws_ctx = nullptr;
-    }
-    if(m_video_render != nullptr){
-        m_video_render->ReleaseRender();
-        m_video_render = nullptr;
-    }
-}
-
-bool VideoDecoder::NeedLoopDecode() {
-    return true;
-}
-
-
-
-
-
-
-
-

@@ -23,7 +23,7 @@ static const uint64_t ENCODE_AUDIO_DEST_CHANNEL_LAYOUT = AV_CH_LAYOUT_STEREO;
 // 音频编码比特率
 static const int ENCODE_AUDIO_DEST_BIT_RATE = 64000;
 // ACC音频一帧采样数
-static const int ACC_NB_SAMPLES = 1024;
+//static const int ACC_NB_SAMPLES = 1024;
 // 视频编码帧率
 static const int ENCODE_VIDEO_FPS = 25;
 #endif //FFMPEGPLAYER_CONST_H

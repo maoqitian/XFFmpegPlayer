@@ -9,23 +9,7 @@
 #include "../utils/logger.h"
 
 GLPlayer::GLPlayer(JNIEnv *jniEnv, jstring path) {
-    m_v_decoder = new VideoDecoder(jniEnv, path);
 
-    // OpenGL 渲染
-    m_v_drawer = new VideoDrawer();
-    m_v_decoder->SetRender(m_v_drawer);
-
-    DefDrawerProxyImpl *proxyImpl =  new DefDrawerProxyImpl();
-    proxyImpl->AddDrawer(m_v_drawer);
-
-    m_v_drawer_proxy = proxyImpl;
-
-    m_gl_render = new OpenGLRender(jniEnv, m_v_drawer_proxy);
-
-    // 音频解码
-    m_a_decoder = new AudioDecoder(jniEnv, path, false);
-    m_a_render = new OpenSLRender();
-    m_a_decoder->SetRender(m_a_render);
 }
 
 GLPlayer::~GLPlayer() {
@@ -38,20 +22,7 @@ void GLPlayer::SetSurface(jobject surface) {
 }
 
 void GLPlayer::PlayOrPause() {
-    if (!m_v_decoder->IsRunning()) {
-        LOGI("Player", "播放视频")
-        m_v_decoder->GoOn();
-    } else {
-        LOGI("Player", "暂停视频")
-        m_v_decoder->Pause();
-    }
-    if (!m_a_decoder->IsRunning()) {
-        LOGI("Player", "播放音频")
-        m_a_decoder->GoOn();
-    } else {
-        LOGI("Player", "暂停音频")
-        m_a_decoder->Pause();
-    }
+
 }
 
 void GLPlayer::Release() {

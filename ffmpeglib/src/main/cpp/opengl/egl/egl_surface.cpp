@@ -26,7 +26,7 @@ void EglSurface::CreateEglSurface(ANativeWindow *native_window, int width, int h
         m_surface = m_core->CreateOffScreenSurface(width, height);
     }
     if (m_surface == NULL) {
-        LOGE(TAG, "EGL create window surface fail")
+        //LOGE(TAG, "EGL create window surface fail")
         Release();
     }
     MakeCurrent();

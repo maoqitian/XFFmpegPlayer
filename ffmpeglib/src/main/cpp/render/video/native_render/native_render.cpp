@@ -6,55 +6,65 @@
 #include <utils/logger.h>
 #include "native_render.h"
 
-NativeRender::NativeRender(JNIEnv *env, jobject surface) {
-    m_surface_ref = env->NewGlobalRef(surface);
+NativeRender::NativeRender(JNIEnv *env, jobject surface) : VideoRender(VIDEO_RENDER_ANWINDOW) {
+
+    m_NativeWindow = ANativeWindow_fromSurface(env,surface);
 }
 
 NativeRender::~NativeRender() {
+    if (m_NativeWindow)
+        ANativeWindow_release(m_NativeWindow);
 
 }
 
-//本地渲染初始化
-void NativeRender::InitRender(JNIEnv *env, int video_width, int video_height, int *dst_size) {
-    //初始化窗口
-    m_native_window = ANativeWindow_fromSurface(env,m_surface_ref);
+//初始化窗口
+void NativeRender::Init(int videoWidth, int videoHeight, int *dstSize) {
 
-    //绘制区域的宽高
-    int windowWidth = ANativeWindow_getWidth(m_native_window);
-    int windowHeight = ANativeWindow_getHeight(m_native_window);
-    //计算目标视频的宽高
-    m_dst_w = windowWidth;
-    m_dst_h = m_dst_w * video_height/video_width;
-    if(m_dst_h > windowHeight){
-        m_dst_h = windowHeight;
-        m_dst_w = windowHeight * video_width/video_height;
+    LOGCATE("NativeRender::Init m_NativeWindow=%p, video[w,h]=[%d, %d]", m_NativeWindow, videoWidth, videoHeight);
+
+    if (m_NativeWindow == nullptr) return;
+
+    int windowWidth = ANativeWindow_getWidth(m_NativeWindow);
+    int windowHeight = ANativeWindow_getHeight(m_NativeWindow);
+
+    //修正宽高
+    if (windowWidth < windowHeight * videoWidth / videoHeight) {
+        m_DstWidth = windowWidth;
+        m_DstHeight = windowWidth * videoHeight / videoWidth;
+    } else {
+        m_DstWidth = windowHeight * videoWidth / videoHeight;
+        m_DstHeight = windowHeight;
     }
-    LOGE(TAG, "windowW: %d, windowH: %d, dstVideoW: %d, dstVideoH: %d",
-         windowWidth, windowHeight, m_dst_w, m_dst_h)
-    //设置宽高限制缓冲区中的像素数量
-    ANativeWindow_setBuffersGeometry(m_native_window,windowWidth,windowWidth,WINDOW_FORMAT_RGBA_8888);
+    LOGCATE("NativeRender::Init window[w,h]=[%d, %d],DstSize[w, h]=[%d, %d]", windowWidth, windowHeight, m_DstWidth, m_DstHeight);
 
-    dst_size[0] = m_dst_w;
-    dst_size[1] = m_dst_h;
+    ANativeWindow_setBuffersGeometry(m_NativeWindow,m_DstWidth,
+                                     m_DstHeight,WINDOW_FORMAT_RGBA_8888);
+
+    dstSize[0] = m_DstWidth;
+    dstSize[1] = m_DstHeight;
 }
-//渲染
-void NativeRender::Render(OneFrame *one_frame) {
-     //锁定窗口 并获取到输出缓冲区 m_out_buffer
-     ANativeWindow_lock(m_native_window,&m_out_buffer,nullptr);
-     auto *dst = (uint8_t*) m_out_buffer.bits;
 
-     //获取stride：一行可以保存的内存像素数量*4（即：rgba的位数）
-     int dstStride = m_out_buffer.stride * 4;
-     int srcStride = one_frame->line_size;
+//移除渲染
+void NativeRender::RenderVideoFrame(NativeImage *pImage) {
 
-     //由于window的stride和帧的stride不同，因此需要逐行复制
-    for (int i = 0; i < m_dst_h; ++i) {
-        memcpy(dst + i * dstStride,one_frame->data + i * srcStride,srcStride);
+    if (m_NativeWindow == nullptr || pImage == nullptr) return;
+
+    ANativeWindow_lock(m_NativeWindow,&m_NativeWindowBuffer, nullptr);
+
+    uint8_t *dstBuffer = static_cast<uint8_t *>(m_NativeWindowBuffer.bits);
+
+    int srcLineSize = pImage->width * 4;//RGBA
+    int dstLineSize = m_NativeWindowBuffer.stride * 4;
+
+    for (int i = 0; i < m_DstHeight; ++i) {
+        memcpy(dstBuffer + i * dstLineSize, pImage->ppPlane[0] + i * srcLineSize, srcLineSize);
     }
-    //释放窗口，并将缓冲数据绘制到屏幕上
-    ANativeWindow_unlockAndPost(m_native_window);
+
+    ANativeWindow_unlockAndPost(m_NativeWindow);
+
+
 }
 
-void NativeRender::ReleaseRender() {
+void NativeRender::UnInit() {
 
 }
