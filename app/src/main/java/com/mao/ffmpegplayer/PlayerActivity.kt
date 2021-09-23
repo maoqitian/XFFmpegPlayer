@@ -21,6 +21,10 @@ import com.mao.ffplayer.FFMediaPlayer.Companion.MEDIA_PARAM_VIDEO_DURATION
 import com.mao.ffplayer.FFMediaPlayer.Companion.MEDIA_PARAM_VIDEO_HEIGHT
 import com.mao.ffplayer.FFMediaPlayer.Companion.MEDIA_PARAM_VIDEO_WIDTH
 import com.mao.ffplayer.surfaceview.NormalSurfaceView
+import okio.buffer
+import okio.sink
+import okio.source
+import java.io.File
 import kotlin.math.log
 
 
@@ -41,8 +45,10 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
     private var mIsTouch = false
 
+    private lateinit var videFile : File
+
     //private val mVideoPath = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
-    private val mVideoPath: String = Environment.getExternalStorageDirectory().absolutePath+ "/video/one_piece.mp4"
+    private val mVideoPath: String = Environment.getExternalStorageDirectory().absolutePath + "/video/one_piece.mp4"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,8 +61,19 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
         mSeekBar = playerBinding.seekBar
 
+        videFile = File("$cacheDir/test.mp4")
+
 
         Log.e("maoqitian","${mVideoPath.toString()}")
+
+        if(!videFile.exists()){
+            //使用 okio 复制文件到 缓存文件中
+            assets.open("video/one_piece.mp4").source().use {
+                    bufferSource -> videFile.sink().buffer().use {
+                it.writeAll(bufferSource)
+              }
+            }
+        }
 
         mSeekBar.setOnTouchListener(object :View.OnTouchListener{
             override fun onTouch(p0: View?, p1: MotionEvent?): Boolean {
@@ -104,7 +121,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
         )
         mMediaPlayer = FFMediaPlayer()
         mMediaPlayer?.addEventCallback(this)
-        mMediaPlayer?.init(mVideoPath, VIDEO_RENDER_ANWINDOW, surfaceHolder.getSurface())
+        mMediaPlayer?.init(videFile.absolutePath, VIDEO_RENDER_ANWINDOW, surfaceHolder.getSurface())
 
     }
 

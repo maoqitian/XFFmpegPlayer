@@ -13,6 +13,8 @@ void AudioDecoder::OnDecoderReady() {
     if (m_AudioRender){
         AVCodecContext *codecContext = GetCodecContext();
 
+        m_SwrContext = swr_alloc();
+
         av_opt_set_int(m_SwrContext, "in_channel_layout", codecContext->channel_layout, 0);
         av_opt_set_int(m_SwrContext, "out_channel_layout", AUDIO_DST_CHANNEL_LAYOUT, 0);
 
