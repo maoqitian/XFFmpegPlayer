@@ -41,14 +41,12 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
     lateinit var playerBinding: ActivityPlayerBinding
 
-    private lateinit var mSeekBar: SeekBar
-
     private var mIsTouch = false
 
     private lateinit var videFile : File
 
-    //private val mVideoPath = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
-    private val mVideoPath: String = Environment.getExternalStorageDirectory().absolutePath + "/video/one_piece.mp4"
+    private val mVideoPath = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
+    //private val mVideoPath: String = Environment.getExternalStorageDirectory().absolutePath + "/video/one_piece.mp4"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,29 +57,23 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
         surfaceView.holder.addCallback(this)
 
-        mSeekBar = playerBinding.seekBar
 
-        videFile = File("$cacheDir/test.mp4")
+        videFile = File("$cacheDir/test1.mp4")
 
 
         Log.e("maoqitian","${mVideoPath.toString()}")
 
         if(!videFile.exists()){
             //使用 okio 复制文件到 缓存文件中
-            assets.open("video/one_piece.mp4").source().use {
+            assets.open("video/test1.mp4").source().use {
                     bufferSource -> videFile.sink().buffer().use {
                 it.writeAll(bufferSource)
               }
             }
         }
 
-        mSeekBar.setOnTouchListener(object :View.OnTouchListener{
-            override fun onTouch(p0: View?, p1: MotionEvent?): Boolean {
-                    return true
-            }
-
-        })
-        mSeekBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
+        playerBinding.seekBar.setOnTouchListener { p0, p1 -> true }
+        playerBinding.seekBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
             }
 
@@ -91,11 +83,10 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 Log.d("maoqitian", "onStopTrackingTouch() called with: progress = [" + seekBar.progress + "]");
-                mMediaPlayer?.seekToPosition(mSeekBar.progress.toFloat())
+                mMediaPlayer?.seekToPosition(playerBinding.seekBar.progress.toFloat())
                 mIsTouch = false;
             }
         })
-
 
     }
 
@@ -121,7 +112,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
         )
         mMediaPlayer = FFMediaPlayer()
         mMediaPlayer?.addEventCallback(this)
-        mMediaPlayer?.init(videFile.absolutePath, VIDEO_RENDER_ANWINDOW, surfaceHolder.getSurface())
+        mMediaPlayer?.init(videFile.absolutePath, VIDEO_RENDER_ANWINDOW, surfaceHolder.surface)
 
     }
 
@@ -148,7 +139,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
                 }
                 MSG_REQUEST_RENDER -> {
                 }
-                MSG_DECODING_TIME -> if (!mIsTouch) mSeekBar.progress = msgValue.toInt()
+                MSG_DECODING_TIME -> if (!mIsTouch) playerBinding.seekBar.progress = msgValue.toInt()
                 else -> {
                 }
             }
@@ -162,9 +153,9 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
 
         val duration = mMediaPlayer!!.getMediaParams(MEDIA_PARAM_VIDEO_DURATION).toInt()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            mSeekBar.min = 0
+            playerBinding.seekBar.min = 0
         }
-        mSeekBar.max = duration
+        playerBinding.seekBar.max = duration
     }
 
 
