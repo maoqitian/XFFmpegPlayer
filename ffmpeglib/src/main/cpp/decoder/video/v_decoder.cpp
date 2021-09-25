@@ -9,7 +9,7 @@ void VideoDecoder::OnDecoderReady() {
     LOGCATE("VideoDecoder::OnDecoderReady");
 
     m_VideoWidth = GetCodecContext() -> width;
-    m_RenderHeight = GetCodecContext()-> height;
+    m_VideoHeight = GetCodecContext()-> height;
 
     if (m_MsgContext && m_MsgCallback){
         m_MsgCallback(m_MsgContext,MSG_DECODER_READY,0);

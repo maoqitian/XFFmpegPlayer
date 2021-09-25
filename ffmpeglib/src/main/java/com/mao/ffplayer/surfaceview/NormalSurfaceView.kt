@@ -10,15 +10,14 @@ import android.view.View.MeasureSpec
  *  date : 2021/9/21 11:12
  *  description :
  */
-class NormalSurfaceView : SurfaceView {
+class NormalSurfaceView constructor( context: Context?, attrs: AttributeSet?) : SurfaceView(context, attrs) {
 
 
     private var mRatioWidth = 0
     private var mRatioHeight = 0
 
+    //次级构造函数
     constructor(context: Context?) : this(context,null)
-
-    constructor (context: Context?, attrs: AttributeSet?) : super(context,attrs)
 
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
