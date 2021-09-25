@@ -72,7 +72,6 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
             }
         }
 
-        playerBinding.seekBar.setOnTouchListener { p0, p1 -> true }
         playerBinding.seekBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
             }
@@ -84,7 +83,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 Log.d("maoqitian", "onStopTrackingTouch() called with: progress = [" + seekBar.progress + "]");
                 mMediaPlayer?.seekToPosition(playerBinding.seekBar.progress.toFloat())
-                mIsTouch = false;
+                mIsTouch = false
             }
         })
 

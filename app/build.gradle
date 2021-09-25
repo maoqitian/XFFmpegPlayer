@@ -40,4 +40,7 @@ dependencies {
     implementation 'com.permissionx.guolindev:permissionx:1.4.0'
 
     implementation 'com.squareup.okio:okio:2.10.0'
+
+    implementation 'com.squareup.tart:tart:0.1'
+
 }
