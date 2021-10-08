@@ -11,7 +11,7 @@ typedef long (*AVSyncCallback)(void*);
 
 class IDecoder{
 public:
-    virtual void Start() = 0;
+    virtual void Start() = 0; //纯虚函数，达到类似Java 接口抽象的效果，函数实际调用以子类实现为准（virtual 虚函数作用）
     virtual void Pause() = 0;
     virtual void Stop() = 0;
     virtual float GetDuration() = 0;
