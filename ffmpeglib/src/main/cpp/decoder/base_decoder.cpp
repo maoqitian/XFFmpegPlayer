@@ -77,7 +77,7 @@ int BaseDecoder::InitFFDecoder() {
        //1 创建封装格式上下文
        m_AVFormatContext = avformat_alloc_context();
 
-       //2 打开文件
+       //2 打开文件，解封装
        if(avformat_open_input(&m_AVFormatContext,m_Url,NULL,NULL)!=0){
            LOGCATE("BaseDecoder::InitFFDecoder avformat_open_input fail.");
            break;
@@ -102,10 +102,10 @@ int BaseDecoder::InitFFDecoder() {
             break;
         }
 
-        //5. 获取解码参数
+        //5. 根据索引 获取解码参数
         AVCodecParameters *codecParameters = m_AVFormatContext-> streams[m_StreamIndex]->codecpar;
 
-        //6. 获取解码器
+        //6. 由解码参数的 codec_id 获取解码器
         m_AVCodec = avcodec_find_decoder(codecParameters->codec_id);
         if (m_AVCodec == nullptr){
             LOGCATE("BaseDecoder::InitFFDecoder avcodec_find_decoder fail.");
@@ -138,10 +138,10 @@ int BaseDecoder::InitFFDecoder() {
         //总时间长度 ms
         m_Duration = m_AVFormatContext->duration/AV_TIME_BASE * 1000;
 
-        // AVPacket 存放编码数据
-        m_Packet = av_packet_alloc();
+        //9.创建存储编码数据和解码数据的结构体
+        m_Packet = av_packet_alloc(); //创建 AVPacket 存放编码数据
         //解码后的数据 帧
-        m_Frame = av_frame_alloc();
+        m_Frame = av_frame_alloc(); //创建 AVFrame 存放解码后的数据
     } while (false);
 
     //解码失败
@@ -184,6 +184,7 @@ void BaseDecoder::StartDecodingThread() {
     m_Thread = new thread(DoAVDecoding,this);
 }
 
+//解码循环
 void BaseDecoder::DecodingLoop() {
     LOGCATE("BaseDecoder::DecodingLoop start, m_MediaType=%d", m_MediaType);
 
@@ -361,14 +362,18 @@ int BaseDecoder::DecodeOnePacket() {
     return result;
 }
 
+//执行解码
 void BaseDecoder::DoAVDecoding(BaseDecoder *decoder) {
 
     LOGCATE("BaseDecoder::DoAVDecoding");
     do {
+        //解码初始化
         if(decoder -> InitFFDecoder() != 0){
             break;
         }
+        // OnDecoderReady 中初始化渲染模块
         decoder -> OnDecoderReady();
+        // 开始解码循环
         decoder -> DecodingLoop();
     } while (false);
 

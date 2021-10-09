@@ -1,6 +1,6 @@
 //
 // Created by maoqitian on 2020/12/18 0018.
-// Description: OpenGL 渲染器
+// Description: 视频 OpenGL 渲染器
 //
 
 #ifndef FFMPEGPLAYER_OPENGL_RENDER_H
@@ -13,8 +13,9 @@
 #include <memory>
 #include <opengl/egl/egl_surface.h>
 #include <opengl/drawer/proxy/drawer_proxy.h>
+#include "BaseGLRender.h"
 
-class OpenGLRender {
+class OpenGLRender : public BaseGLRender, public VideoRender{
 private:
 
     const char *TAG = "OpenGLRender";

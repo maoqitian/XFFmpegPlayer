@@ -9,34 +9,35 @@
 #include <unistd.h>
 #include <utils/logger.h>
 
-
+//OpenSLES 渲染器初始化
 void OpenSLRender::Init() {
 
     LOGCATE("OpenSLRender::Init");
 
     int result = -1;
     do {
+        //创建并初始化引擎对象
         result = CreateEngine();
         if(result != SL_RESULT_SUCCESS)
         {
             LOGCATE("OpenSLRender::Init CreateEngine fail. result=%d", result);
             break;
         }
-
+        //创建并初始化混音器
         result = CreateOutputMixer();
         if(result != SL_RESULT_SUCCESS)
         {
             LOGCATE("OpenSLRender::Init CreateOutputMixer fail. result=%d", result);
             break;
         }
-
+        //创建并初始化播放器
         result = CreateAudioPlayer();
         if(result != SL_RESULT_SUCCESS)
         {
             LOGCATE("OpenSLRender::Init CreateAudioPlayer fail. result=%d", result);
             break;
         }
-
+        //新线程 启动播放
         m_thread = new std::thread(CreateSLWaitingThread, this);
 
     } while (false);
@@ -180,6 +181,7 @@ int OpenSLRender::CreateOutputMixer() {
 
 int OpenSLRender::CreateAudioPlayer() {
     SLDataLocator_AndroidSimpleBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    //数据格式的定义
     SLDataFormat_PCM pcm = {
             SL_DATAFORMAT_PCM,//format type
             (SLuint32)2,//channel count
@@ -260,8 +262,9 @@ void OpenSLRender::StartRender() {
         //m_Cond.wait(lock);
         lock.unlock();
     }
-
+    //设置播放状态
     (*m_AudioPlayerPlay)->SetPlayState(m_AudioPlayerPlay, SL_PLAYSTATE_PLAYING);
+    //激活回调接口
     AudioPlayerCallback(m_BufferQueue, this);
 
 }
@@ -276,6 +279,7 @@ void OpenSLRender::HandleAudioFrameQueue() {
     }
 
     std::unique_lock<std::mutex> lock(m_Mutex);
+    //播放存放在音频帧队列中的数据
     AudioFrame *audioFrame = m_AudioFrameQueue.front();
     if (nullptr != audioFrame && m_AudioPlayerPlay) {
         SLresult result = (*m_BufferQueue)->Enqueue(m_BufferQueue, audioFrame->data, (SLuint32) audioFrame->dataSize);
@@ -292,7 +296,7 @@ void OpenSLRender::HandleAudioFrameQueue() {
 void OpenSLRender::CreateSLWaitingThread(OpenSLRender *openSlRender) {
     openSlRender->StartRender();
 }
-
+//播放器的 callback
 void OpenSLRender::AudioPlayerCallback(SLAndroidSimpleBufferQueueItf bufferQueue, void *context) {
     OpenSLRender *openSlRender = static_cast<OpenSLRender *>(context);
     openSlRender->HandleAudioFrameQueue();

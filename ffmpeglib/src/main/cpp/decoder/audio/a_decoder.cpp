@@ -1,7 +1,7 @@
 //
 // Created by maoqitian on 2020/12/17 0017.
 // Description: 音频解码
-//
+// libswresample 库将对音频进行重采样
 
 #include "a_decoder.h"
 #include <utils/const.h>
@@ -13,6 +13,7 @@ void AudioDecoder::OnDecoderReady() {
     if (m_AudioRender){
         AVCodecContext *codecContext = GetCodecContext();
 
+        //1. 生成 resample 上下文，设置输入和输出的通道数、采样率以及采样格式，初始化上下文
         m_SwrContext = swr_alloc();
 
         av_opt_set_int(m_SwrContext, "in_channel_layout", codecContext->channel_layout, 0);
@@ -30,6 +31,7 @@ void AudioDecoder::OnDecoderReady() {
                 codecContext->sample_rate, codecContext->channels, codecContext->sample_fmt, codecContext->frame_size,codecContext->channel_layout);
 
         // resample params
+        //2. 申请输出 Buffer
         m_nbSamples = (int)av_rescale_rnd(ACC_NB_SAMPLES, AUDIO_DST_SAMPLE_RATE, codecContext->sample_rate, AV_ROUND_UP);
         m_DstFrameDataSze = av_samples_get_buffer_size(NULL, AUDIO_DST_CHANNEL_COUNTS,m_nbSamples, DST_SAMPLT_FORMAT, 1);
 
@@ -37,6 +39,7 @@ void AudioDecoder::OnDecoderReady() {
 
         m_AudioOutBuffer = (uint8_t *) malloc(m_DstFrameDataSze);
 
+        //初始化 OpenSL ES 音频渲染
         m_AudioRender->Init();
 
     } else{
@@ -66,6 +69,7 @@ void AudioDecoder::OnDecoderDone() {
 void AudioDecoder::OnFrameAvailable(AVFrame *frame) {
     LOGCATE("AudioDecoder::OnFrameAvailable frame=%p, frame->nb_samples=%d", frame, frame->nb_samples);
     if(m_AudioRender){
+        //3. 重采样，frame 为解码帧
         int result = swr_convert(m_SwrContext, &m_AudioOutBuffer,m_DstFrameDataSze/2,(const uint8_t **) frame->data, frame->nb_samples);
 
         if (result > 0){
