@@ -227,6 +227,7 @@ void BaseDecoder::DecodingLoop() {
 void BaseDecoder::UpdateTimeStamp() {
     LOGCATE("BaseDecoder::UpdateTimeStamp");
 
+    //参照 ffplay
     //读写保护
     std::unique_lock<std::mutex> lock(m_Mutex);
 
@@ -248,6 +249,9 @@ void BaseDecoder::UpdateTimeStamp() {
 }
 
 //音视频同步 系统时钟同步
+//音视频向系统时钟同步，顾名思义，系统时钟的更新是按照时间的增加而增加，获取音视频解码帧时与系统时钟进行对齐操作。
+//简而言之就是，当前音频或视频播放时间戳大于系统时钟时，解码线程进行休眠，直到时间戳与系统时钟对齐
+//音视频向系统时钟同步可以最大限度减少丢帧跳帧现象，但是前提是系统时钟不能受其他耗时任务影响。
 long BaseDecoder::AVSync() {
     LOGCATE("BaseDecoder::AVSync");
 
@@ -268,7 +272,7 @@ long BaseDecoder::AVSync() {
 
         //休眠时间不能过长，修正休眠时间
         sleepTime = sleepTime > DELAY_THRESHOLD ? DELAY_THRESHOLD : sleepTime;
-
+        //不同步大于 执行休眠
         av_usleep(sleepTime * 1000);
     }
 
