@@ -4,6 +4,7 @@
 //
 
 #include <opensl_render.h>
+#include "opengl_render.h"
 #include "FFMediaPlayer.h"
 #include "native_render.h"
 
@@ -16,10 +17,16 @@ void FFMediaPlayer::Init(JNIEnv *jniEnv, jobject obj, char *url, int renderType,
     m_VideoDecoder = new VideoDecoder(url);
     m_AudioDecoder = new AudioDecoder(url);
 
-    m_VideoRender = new NativeRender(jniEnv, surface);
-    m_VideoDecoder->SetVideoRender(m_VideoRender);
+    if (renderType == VIDEO_RENDER_ANWINDOW){
+        //ANativeWindow 渲染
+        m_VideoRender = new NativeRender(jniEnv, surface);
+        m_VideoDecoder->SetVideoRender(m_VideoRender);
+    }else if (renderType == VIDEO_RENDER_OPENGL){
+        //OPENGL 渲染
+        m_VideoDecoder->SetVideoRender(OpenGLRender::GetInstance());
+    }
 
-
+    //OpenSL 音频渲染
     m_AudioRender = new OpenSLRender();
     m_AudioDecoder->SetAudioRender(m_AudioRender);
 

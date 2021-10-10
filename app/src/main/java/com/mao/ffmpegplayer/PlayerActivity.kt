@@ -111,6 +111,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
         )
         mMediaPlayer = FFMediaPlayer()
         mMediaPlayer?.addEventCallback(this)
+        //通过surface 使用 ANativeWindow 渲染
         mMediaPlayer?.init(videFile.absolutePath, VIDEO_RENDER_ANWINDOW, surfaceHolder.surface)
 
     }

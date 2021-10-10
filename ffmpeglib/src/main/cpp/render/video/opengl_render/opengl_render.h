@@ -1,92 +1,67 @@
 //
 // Created by maoqitian on 2020/12/18 0018.
-// Description: 视频 OpenGL 渲染器
+// Description: 视频 OpenGL ES 渲染器
 //
 
 #ifndef FFMPEGPLAYER_OPENGL_RENDER_H
 #define FFMPEGPLAYER_OPENGL_RENDER_H
-#include <android/native_window.h>
-#include <android/native_window_jni.h>
 #include <jni.h>
 #include "../video_render.h"
-#include "opengl_pixel_receiver.h"
-#include <memory>
-#include <opengl/egl/egl_surface.h>
-#include <opengl/drawer/proxy/drawer_proxy.h>
 #include "BaseGLRender.h"
+#include "vec2.hpp"
+#include <GLES3/gl3.h>
+#include <thread>
+#include "ImageDef.h"
+#include <detail/type_mat.hpp>
+#include <detail/type_mat4x4.hpp>
 
-class OpenGLRender : public BaseGLRender, public VideoRender{
+
+using namespace glm;
+
+#define MATH_PI 3.1415926535897932384626433832802
+#define TEXTURE_NUM 3
+
+class OpenGLRender :  public VideoRender,public BaseGLRender{
 private:
 
-    const char *TAG = "OpenGLRender";
+    OpenGLRender();
+    virtual ~OpenGLRender();
 
-    enum STATE {
-        NO_SURFACE, //没有有效的surface
-        FRESH_SURFACE, //持有一个未初始化的新的surface
-        RENDERING, //初始化完毕，可以开始渲染
-        SURFACE_DESTROY, //surface销毁
-        STOP //停止绘制
-    };
+    static std::mutex m_Mutex;
+    static OpenGLRender* s_Instance;
+    GLuint m_ProgramObj = GL_NONE;
+    GLuint m_TextureIds[TEXTURE_NUM];
+    GLuint m_VaoId;
+    GLuint m_VboIds[3];
+    NativeImage m_RenderImage;
+    glm::mat4 m_MVPMatrix;
 
-    JNIEnv *m_env = NULL;
-
-    // 线程依附的JVM环境
-    JavaVM *m_jvm_for_thread = NULL;
-
-    // Surface引用，必须使用引用，否则无法在线程中操作
-    jobject m_surface_ref = NULL;
-
-    // 本地屏幕
-    ANativeWindow *m_native_window = NULL;
-
-    // EGL显示表面
-    EglSurface *m_egl_surface = NULL;
-
-    // 绘制代理器
-    DrawerProxy *m_drawer_proxy = NULL;
-
-    int m_window_width = 0;
-    int m_window_height = 0;
-
-    bool m_need_output_pixels = false;
-
-    OpenGLPixelReceiver * m_pixel_receiver = NULL;
-
-    STATE m_state = NO_SURFACE;
-
-    // 初始化相关的方法
-    void InitRenderThread();
-    bool InitEGL();
-    void InitDspWindow(JNIEnv *env);
-
-    // 创建Surface
-    void CreateSurface();
-    void DestroySurface();
-
-    // 渲染方法
-    void Render();
-
-    // 释放资源相关方法
-    void ReleaseRender();
-    void ReleaseDrawers();
-    void ReleaseSurface();
-    void ReleaseWindow();
-
-    // 渲染线程回调方法
-    static void sRenderThread(std::shared_ptr<OpenGLRender> that);
+    int m_FrameIndex;
+    vec2 m_TouchXY;
+    vec2 m_ScreenSize;
 
 public:
-    OpenGLRender(JNIEnv *env, DrawerProxy *drawer_proxy);
-    ~OpenGLRender();
 
-    void SetPixelReceiver(OpenGLPixelReceiver *receiver) {
-        m_pixel_receiver = receiver;
+    virtual void Init(int videoWidth, int videoHeight, int *dstSize); //虚函数 实现子类调用实现
+    virtual void RenderVideoFrame(NativeImage *pImage);
+    virtual void UnInit();
+
+    //对应 Java 层 GLSurfaceView.Renderer 的三个接口
+    void OnSurfaceCreated();
+    void OnSurfaceChanged(int w, int h);
+    void OnDrawFrame();
+
+    //静态实例管理
+    static OpenGLRender *GetInstance();
+    static void ReleaseInstance();
+
+    //设置变换矩阵，控制图像的旋转缩放
+    virtual void UpdateMVPMatrix(int angleX, int angleY, float scaleX, float scaleY);
+    virtual void UpdateMVPMatrix(TransformMatrix * pTransformMatrix);
+    virtual void SetTouchLoc(float touchX, float touchY) {
+        m_TouchXY.x = touchX / m_ScreenSize.x;
+        m_TouchXY.y = touchY / m_ScreenSize.y;
     }
-
-    void SetSurface(jobject surface);
-    void SetOffScreenSize(int width, int height);
-    void RequestRgbaData();
-    void Stop();
 };
 
 
