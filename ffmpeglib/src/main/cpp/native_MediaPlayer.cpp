@@ -18,6 +18,7 @@ extern "C" {
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <include/libavcodec/jni.h>
+#include "opengl_render.h"
 #include <AudioGLRender.h>
 #include "utils/FFLog.h"
 #include "FFMediaPlayer.h"
@@ -100,7 +101,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_native_1OnSurfaceCreated(JNIEnv *env, jobjec
     switch (render_type)
     {
         case VIDEO_GL_RENDER:
-            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            OpenGLRender::GetInstance()->OnSurfaceCreated();
             break;
         case AUDIO_GL_RENDER:
             AudioGLRender::GetInstance()->OnSurfaceCreated();
@@ -120,7 +121,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_native_1OnSurfaceChanged(JNIEnv *env, jobjec
     switch (render_type)
     {
         case VIDEO_GL_RENDER:
-            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            OpenGLRender::GetInstance()->OnSurfaceChanged(width,height);
             break;
         case AUDIO_GL_RENDER:
             AudioGLRender::GetInstance()->OnSurfaceChanged(width,height);
@@ -139,7 +140,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_native_1OnDrawFrame(JNIEnv *env, jobject thi
     switch (render_type)
     {
         case VIDEO_GL_RENDER:
-            //VideoGLRender::GetInstance()->OnSurfaceCreated();
+            OpenGLRender::GetInstance()->OnDrawFrame();
             break;
         case AUDIO_GL_RENDER:
             AudioGLRender::GetInstance()->OnDrawFrame();
@@ -159,7 +160,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_native_1SetGesture(JNIEnv *env, jobject thiz
     switch (render_type)
     {
         case VIDEO_GL_RENDER:
-            //VideoGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
+            OpenGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
             break;
         case AUDIO_GL_RENDER:
             AudioGLRender::GetInstance()->UpdateMVPMatrix(x_rotate_angle, y_rotate_angle, scale, scale);
@@ -178,7 +179,7 @@ Java_com_mao_ffplayer_FFMediaPlayer_native_1SetTouchLoc(JNIEnv *env, jobject thi
     switch (render_type)
     {
         case VIDEO_GL_RENDER:
-            //VideoGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);
+            OpenGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);
             break;
         case AUDIO_GL_RENDER:
             AudioGLRender::GetInstance()->SetTouchLoc(touch_x, touch_y);

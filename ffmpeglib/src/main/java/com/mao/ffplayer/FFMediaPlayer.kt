@@ -22,7 +22,7 @@ class FFMediaPlayer{
         }
 
         //gl render type
-        const val  VIDEO_GL_RENDER = 0
+        const val VIDEO_GL_RENDER = 0
         const val AUDIO_GL_RENDER = 1
         const val VR_3D_GL_RENDER = 2
 
@@ -37,6 +37,7 @@ class FFMediaPlayer{
         const val MEDIA_PARAM_VIDEO_HEIGHT = 0x0002
         const val MEDIA_PARAM_VIDEO_DURATION = 0x0003
 
+        //视频渲染类型
         const val VIDEO_RENDER_OPENGL = 0
         const val VIDEO_RENDER_ANWINDOW = 1
         const val VIDEO_RENDER_3D_VR = 2
@@ -104,7 +105,7 @@ class FFMediaPlayer{
 
      external fun native_GetMediaParams(playerHandle: Long, paramType: Int): Long
 
-    //for GL render
+    //for Open GL render
     external fun native_OnSurfaceCreated(renderType: Int)
     external fun native_OnSurfaceChanged(renderType: Int, width: Int, height: Int)
     external fun native_OnDrawFrame(renderType: Int)

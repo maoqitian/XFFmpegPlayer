@@ -1,24 +1,25 @@
-package com.mao.ffplayer.surfaceview
+package com.mao.ffplayer.glsurface
 
 import android.content.Context
+import android.opengl.GLSurfaceView
 import android.util.AttributeSet
-import android.view.SurfaceView
-import android.view.View.MeasureSpec
+import android.view.ScaleGestureDetector
 
 /**
- *  author : maoqitian
- *  date : 2021/9/21 11:12
- *  description : 对应 ANativeWindow 渲染
+ * @Description: OpenGL 视频渲染 支持手势
+ * @author maoqitian
+ * @date 2021/10/11 0011 10:08
  */
-class NormalSurfaceView constructor( context: Context?, attrs: AttributeSet?) : SurfaceView(context, attrs) {
+class FFGLSurfaceView constructor(context: Context?, attrs: AttributeSet?):GLSurfaceView(context, attrs),
+    ScaleGestureDetector.OnScaleGestureListener{
 
+    var scaleGestureDetector:ScaleGestureDetector = ScaleGestureDetector(context,this)
 
     private var mRatioWidth = 0
     private var mRatioHeight = 0
 
     //次级构造函数
     constructor(context: Context?) : this(context,null)
-
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
@@ -44,4 +45,14 @@ class NormalSurfaceView constructor( context: Context?, attrs: AttributeSet?) : 
         requestLayout()
     }
 
+    override fun onScale(detector: ScaleGestureDetector?): Boolean {
+        return false
+    }
+
+    override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+        return true
+    }
+
+    override fun onScaleEnd(detector: ScaleGestureDetector?) {
+    }
 }
