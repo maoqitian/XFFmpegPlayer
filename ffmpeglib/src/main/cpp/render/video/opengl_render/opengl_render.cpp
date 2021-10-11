@@ -13,6 +13,10 @@
 /**
  * 通过 OpenGL 可实现的加视频滤镜，如加水印、旋转缩放等效果
  */
+
+OpenGLRender* OpenGLRender::s_Instance = nullptr;
+std::mutex OpenGLRender::m_Mutex;
+
 static char vShaderStr[] =
         "#version 300 es\n"
         "layout(location = 0) in vec4 a_position;\n"

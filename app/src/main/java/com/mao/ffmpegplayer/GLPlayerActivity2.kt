@@ -109,6 +109,11 @@ class GLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlay
         mMediaPlayer?.stop()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mMediaPlayer?.unInit()
+    }
+
     override fun onPlayerEvent(msgType: Int, msgValue: Float) {
         Log.d(
             "maoqitian",

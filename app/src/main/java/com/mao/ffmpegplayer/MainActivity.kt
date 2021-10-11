@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity(),View.OnClickListener{
         button4.setOnClickListener(this)
         button5.setOnClickListener(this)
         player.setOnClickListener(this)
+        gl_player.setOnClickListener(this)
         PermissionX.init(this)
             .permissions(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             .request { allGranted, grantedList, deniedList ->
