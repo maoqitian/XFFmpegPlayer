@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity(),View.OnClickListener{
                  R.id.button4 -> tvText.text = avfilterInfo()
                  R.id.button5 -> tvText.text = configurationInfo()
                  R.id.player -> startActivity(Intent(this,PlayerActivity::class.java))
-                 R.id.gl_player -> startActivity(Intent(this,GLPlayerActivity2::class.java))
+                 R.id.gl_player -> startActivity(Intent(this,OpenGLPlayerActivity2::class.java))
          }
     }
 

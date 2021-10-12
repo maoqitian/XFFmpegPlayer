@@ -42,6 +42,12 @@ class FFMediaPlayer{
         const val VIDEO_RENDER_ANWINDOW = 1
         const val VIDEO_RENDER_3D_VR = 2
 
+        //for Open GL render
+        external fun native_OnSurfaceCreated(renderType: Int)
+        external fun native_OnSurfaceChanged(renderType: Int, width: Int, height: Int)
+        external fun native_OnDrawFrame(renderType: Int)
+
+
     }
 
     private var mNativePlayerHandle: Long = 0
@@ -51,7 +57,7 @@ class FFMediaPlayer{
 
 
     fun init(url: String?, videoRenderType: Int, surface: Surface?) {
-        mNativePlayerHandle = native_Init(url!!, videoRenderType, surface!!)
+        mNativePlayerHandle = native_Init(url!!, videoRenderType, surface)
     }
 
     fun play() {
@@ -91,7 +97,7 @@ class FFMediaPlayer{
 
 
     //播放器初始化
-     external fun native_Init(url: String, renderType: Int, surface: Any): Long
+     external fun native_Init(url: String, renderType: Int, surface: Any?): Long
     //开始播放
      external fun native_Play(playerHandle: Long)
     //指定位置播放

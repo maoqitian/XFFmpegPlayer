@@ -28,7 +28,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".GLPlayerActivity2"
+            android:name=".OpenGLPlayerActivity2"
             android:exported="true" />
         <activity
             android:name=".MainActivity"

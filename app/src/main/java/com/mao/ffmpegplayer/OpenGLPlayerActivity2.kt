@@ -19,7 +19,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 
-class GLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlayer.EventCallback {
+class OpenGLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlayer.EventCallback {
 
     lateinit var glplayer2Binding: ActivityGlplayer2Binding
 
@@ -35,21 +35,17 @@ class GLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlay
         super.onCreate(savedInstanceState)
         glplayer2Binding = ActivityGlplayer2Binding.inflate(layoutInflater)
         setContentView(glplayer2Binding.root)
-
-        iniGLSurface()
-
-        videFile = File("$cacheDir/test1.mp4")
+        videFile = File("$cacheDir/test2.mp4")
 
         if(!videFile.exists()){
             //使用 okio 复制文件到 缓存文件中
-            assets.open("video/test1.mp4").source().use {
+            assets.open("video/test2.mp4").source().use {
                     bufferSource -> videFile.sink().buffer().use {
                 it.writeAll(bufferSource)
             }
             }
         }
-
-        initFFMediaPlayer()
+        iniGLSurface()
 
         glplayer2Binding.glSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
@@ -65,6 +61,7 @@ class GLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlay
                 mIsTouch = false
             }
         })
+        initFFMediaPlayer()
     }
 
     private fun initFFMediaPlayer() {
@@ -82,15 +79,15 @@ class GLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlay
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        mMediaPlayer?.native_OnSurfaceCreated(VIDEO_GL_RENDER)
+        FFMediaPlayer.native_OnSurfaceCreated(VIDEO_GL_RENDER)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        mMediaPlayer?.native_OnSurfaceChanged(VIDEO_GL_RENDER,width,height)
+        FFMediaPlayer.native_OnSurfaceChanged(VIDEO_GL_RENDER,width,height)
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        mMediaPlayer?.native_OnDrawFrame(VIDEO_GL_RENDER)
+        FFMediaPlayer.native_OnDrawFrame(VIDEO_GL_RENDER)
     }
 
 

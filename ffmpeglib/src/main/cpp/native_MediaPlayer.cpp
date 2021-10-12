@@ -218,3 +218,64 @@ Java_com_mao_ffplayer_FFMediaPlayer_00024Companion_native_1GetFFmpegVersion(JNIE
 
     return env->NewStringUTF(strBuffer);
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_00024Companion_native_1OnSurfaceCreated(JNIEnv *env,
+                                                                            jobject thiz,
+                                                                            jint render_type) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            OpenGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+            //case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            //break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_00024Companion_native_1OnSurfaceChanged(JNIEnv *env,
+                                                                            jobject thiz,
+                                                                            jint render_type,
+                                                                            jint width,
+                                                                            jint height) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            OpenGLRender::GetInstance()->OnSurfaceChanged(width,height);
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnSurfaceChanged(width,height);
+            break;
+        case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        default:
+            break;
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_mao_ffplayer_FFMediaPlayer_00024Companion_native_1OnDrawFrame(JNIEnv *env, jobject thiz,
+                                                                       jint render_type) {
+    switch (render_type)
+    {
+        case VIDEO_GL_RENDER:
+            OpenGLRender::GetInstance()->OnDrawFrame();
+            break;
+        case AUDIO_GL_RENDER:
+            AudioGLRender::GetInstance()->OnDrawFrame();
+            break;
+        case VR_3D_GL_RENDER:
+            //VRGLRender::GetInstance()->OnSurfaceCreated();
+            break;
+        default:
+            break;
+    }
+}
