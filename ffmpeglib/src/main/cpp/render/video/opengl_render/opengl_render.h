@@ -34,6 +34,7 @@ private:
     GLuint m_VaoId;
     GLuint m_VboIds[3];
     NativeImage m_RenderImage;
+    //变化矩阵
     glm::mat4 m_MVPMatrix;
 
     int m_FrameIndex;

@@ -125,24 +125,25 @@ void OpenSLRender::UnInit() {
 
     //AudioGLRender::ReleaseInstance();
 }
-
+//Audio 引擎对象和接口
 int OpenSLRender::CreateEngine() {
     SLresult result = SL_RESULT_SUCCESS;
     do {
+        // 创建引擎对象
         result = slCreateEngine(&m_EngineObj, 0, nullptr, 0, nullptr, nullptr);
         if(result != SL_RESULT_SUCCESS)
         {
             LOGCATE("OpenSLRender::CreateEngine slCreateEngine fail. result=%d", result);
             break;
         }
-
+        //// 实例化
         result = (*m_EngineObj)->Realize(m_EngineObj, SL_BOOLEAN_FALSE);
         if(result != SL_RESULT_SUCCESS)
         {
             LOGCATE("OpenSLRender::CreateEngine Realize fail. result=%d", result);
             break;
         }
-
+        //// 获取引擎对象接口
         result = (*m_EngineObj)->GetInterface(m_EngineObj, SL_IID_ENGINE, &m_EngineEngine);
         if(result != SL_RESULT_SUCCESS)
         {
@@ -191,9 +192,11 @@ int OpenSLRender::CreateAudioPlayer() {
             SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,// channel mask
             SL_BYTEORDER_LITTLEENDIAN // endianness
     };
+    //表示音频数据来源的信息
     SLDataSource slDataSource = {&android_queue, &pcm};
 
     SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, m_OutputMixObj};
+    //表示音频数据输出信息
     SLDataSink slDataSink = {&outputMix, nullptr};
 
     const SLInterfaceID ids[3] = {SL_IID_BUFFERQUEUE, SL_IID_EFFECTSEND, SL_IID_VOLUME};
@@ -202,7 +205,7 @@ int OpenSLRender::CreateAudioPlayer() {
     SLresult result;
 
     do {
-
+        // 创建 audio player 对象
         result = (*m_EngineEngine)->CreateAudioPlayer(m_EngineEngine, &m_AudioPlayerObj, &slDataSource, &slDataSink, 3, ids, req);
         if(result != SL_RESULT_SUCCESS)
         {

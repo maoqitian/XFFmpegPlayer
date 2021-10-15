@@ -105,7 +105,8 @@ int BaseDecoder::InitFFDecoder() {
         //5. 根据索引 获取解码参数
         AVCodecParameters *codecParameters = m_AVFormatContext-> streams[m_StreamIndex]->codecpar;
 
-        //6. 由解码参数的 codec_id 获取解码器
+        //6. 由解码参数的 codec_id 获取解码器  硬件解码 avcodec_get_hw_config() 需要编译支持
+
         m_AVCodec = avcodec_find_decoder(codecParameters->codec_id);
         if (m_AVCodec == nullptr){
             LOGCATE("BaseDecoder::InitFFDecoder avcodec_find_decoder fail.");
