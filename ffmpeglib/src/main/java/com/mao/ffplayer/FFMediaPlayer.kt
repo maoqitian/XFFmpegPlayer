@@ -88,6 +88,7 @@ class FFMediaPlayer{
         return native_GetMediaParams(mNativePlayerHandle, paramType)
     }
 
+    //提供 native 层回调函数实现
     private fun playerEventCallback(msgType: Int, msgValue: Float) {
         mEventCallback?.onPlayerEvent(msgType, msgValue)
     }
