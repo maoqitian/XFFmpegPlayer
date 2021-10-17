@@ -13,7 +13,7 @@
 #include "audio_render.h"
 #include "a_decoder.h"
 
-
+//宏定义 定义调用 java api 名称
 #define JAVA_PLAYER_EVENT_CALLBACK_API_NAME "playerEventCallback"
 
 #define MEDIA_PARAM_VIDEO_WIDTH         0x0001

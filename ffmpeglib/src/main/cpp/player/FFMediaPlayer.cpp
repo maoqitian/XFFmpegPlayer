@@ -148,6 +148,7 @@ JavaVM *FFMediaPlayer::GetJavaVM() {
     return m_JavaVM;
 }
 
+//调用Java 层的方法回调消息
 void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode) {
     if(context != nullptr)
     {
@@ -159,6 +160,10 @@ void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode) {
             return;
         jobject javaObj = player->GetJavaObj();
         jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IF)V");
+        //获取对应方法的对应成员变量
+        //jfieldID id = env->GetFieldID(env->GetObjectClass(javaObj),成员名称,进本数据类型签名);
+        //通过 GetBooleanField 或者 SetBooleanField 可以获取、设置参数
+        //env->SetBooleanField(javaObj,id,true);
         env->CallVoidMethod(javaObj, mid, msgType, msgCode);
         if(isAttach)
             player->GetJavaVM()->DetachCurrentThread();
