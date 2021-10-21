@@ -16,7 +16,7 @@
 
 OpenGLRender* OpenGLRender::s_Instance = nullptr;
 std::mutex OpenGLRender::m_Mutex;
-
+////顶点着色器
 static char vShaderStr[] =
         "#version 300 es\n"
         "layout(location = 0) in vec4 a_position;\n"
@@ -28,7 +28,7 @@ static char vShaderStr[] =
         "    gl_Position = u_MVPMatrix * a_position;\n"
         "    v_texCoord = a_texCoord;\n"
         "}";
-
+////片段着色器
 static char fShaderStr[] =
         "#version 300 es\n"
         "precision highp float;\n"
@@ -312,7 +312,7 @@ void OpenGLRender::OnSurfaceChanged(int w, int h) {
 }
 
 void OpenGLRender::OnDrawFrame() {
-
+    //使用 OpenGL YUV 到 RGBA 的格式转换放到 shader 里，用 GPU 来实现格式转换，提升渲染效率
     glClear(GL_COLOR_BUFFER_BIT);
     if(m_ProgramObj == GL_NONE|| m_RenderImage.ppPlane[0] == nullptr) return;
     LOGCATE("OpenGLRender::OnDrawFrame [w, h]=[%d, %d], format=%d", m_RenderImage.width, m_RenderImage.height, m_RenderImage.format);

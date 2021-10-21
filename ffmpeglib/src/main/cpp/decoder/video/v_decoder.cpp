@@ -96,7 +96,7 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
         LOGCATE("VideoDecoder::OnFrameAvailable frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", frame->width, frame->height, GetCodecContext()->pix_fmt, frame->linesize[0], frame->linesize[1],frame->linesize[2]);
 
         if(m_VideoRender->GetRenderType() == VIDEO_RENDER_ANWINDOW){
-            //如果是 ANativeWindow 渲染 ，
+            //如果是 ANativeWindow 渲染 YUV 转 RGB
             // 3. 格式转换
             sws_scale(m_SwsContext, frame->data, frame->linesize,0,
                       m_VideoHeight,m_RGBAFrame->data,m_RGBAFrame->linesize);
