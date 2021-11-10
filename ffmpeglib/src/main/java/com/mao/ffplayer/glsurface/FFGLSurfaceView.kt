@@ -3,6 +3,7 @@ package com.mao.ffplayer.glsurface
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 
 /**
@@ -17,6 +18,8 @@ class FFGLSurfaceView constructor(context: Context?, attrs: AttributeSet?):GLSur
 
     private var mRatioWidth = 0
     private var mRatioHeight = 0
+
+    private var mGestureCallback:OnGestureCallback? = null
 
     //次级构造函数
     constructor(context: Context?) : this(context,null)
@@ -43,6 +46,14 @@ class FFGLSurfaceView constructor(context: Context?, attrs: AttributeSet?):GLSur
         mRatioWidth = width
         mRatioHeight = height
         requestLayout()
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        return super.onTouchEvent(event)
+    }
+
+    fun addOnGestureCallback(mListener:OnGestureCallback){
+        mGestureCallback = mListener
     }
 
     override fun onScale(detector: ScaleGestureDetector?): Boolean {

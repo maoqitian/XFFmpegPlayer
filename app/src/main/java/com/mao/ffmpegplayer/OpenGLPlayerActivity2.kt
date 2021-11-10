@@ -11,6 +11,7 @@ import com.mao.ffplayer.FFMediaPlayer
 import com.mao.ffplayer.FFMediaPlayer.Companion.VIDEO_GL_RENDER
 import com.mao.ffplayer.FFMediaPlayer.Companion.VIDEO_RENDER_OPENGL
 import com.mao.ffplayer.glsurface.FFGLSurfaceView
+import com.mao.ffplayer.glsurface.OnGestureCallback
 import okio.buffer
 import okio.sink
 import okio.source
@@ -19,7 +20,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 
-class OpenGLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlayer.EventCallback {
+class OpenGLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMediaPlayer.EventCallback,OnGestureCallback {
 
     lateinit var glplayer2Binding: ActivityGlplayer2Binding
 
@@ -75,18 +76,22 @@ class OpenGLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMedia
         mGLSurfaceView.setEGLContextClientVersion(3)
         mGLSurfaceView.setRenderer(this)
         mGLSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-        //mGLSurfaceView.addOnGestureCallback(this);
+        mGLSurfaceView.addOnGestureCallback(this);
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        Log.d("maoqitian", "GL onSurfaceCreated")
         FFMediaPlayer.native_OnSurfaceCreated(VIDEO_GL_RENDER)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        Log.d("maoqitian", "GL onSurfaceChanged w：$width, h：$height")
+
         FFMediaPlayer.native_OnSurfaceChanged(VIDEO_GL_RENDER,width,height)
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        Log.d("maoqitian", "GL onDrawFrame")
         FFMediaPlayer.native_OnDrawFrame(VIDEO_GL_RENDER)
     }
 
@@ -142,5 +147,12 @@ class OpenGLPlayerActivity2 : AppCompatActivity(),GLSurfaceView.Renderer,FFMedia
             glplayer2Binding.glSeekBar.min = 0
         }
         glplayer2Binding.glSeekBar.max = duration
+    }
+
+    override fun onGesture(xRotateAngle: Int, yRotateAngle: Int, scale: Float) {
+
+    }
+
+    override fun onTouchLoc(touchX: Float, touchY: Float) {
     }
 }

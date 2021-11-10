@@ -1,6 +1,8 @@
 #设置构建本机库文件所需的 CMake的最小版本
 cmake_minimum_required(VERSION 3.4.1)
-
+# release 包去除debug信息
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 # 添加头文件路径
 include_directories(
         src/main/cpp

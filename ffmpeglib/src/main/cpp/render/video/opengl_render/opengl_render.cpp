@@ -245,7 +245,7 @@ void OpenGLRender::RenderVideoFrame(NativeImage *pImage) {
 }
 
 void OpenGLRender::UnInit() {
-
+     ReleaseInstance();
 }
 
 /**
@@ -499,7 +499,7 @@ void OpenGLRender::UpdateMVPMatrix(TransformMatrix *pTransformMatrix) {
     Model = glm::translate(Model,
                            glm::vec3(pTransformMatrix->translateX, pTransformMatrix->translateY, 0.0f));
 
-    LOGCATE("VideoGLRender::UpdateMVPMatrix rotate %d,%.2f,%0.5f,%0.5f,%0.5f,%0.5f,", pTransformMatrix->degree, fRotate,
+    LOGCATE("OpenGLRender::UpdateMVPMatrix rotate %d,%.2f,%0.5f,%0.5f,%0.5f,%0.5f,", pTransformMatrix->degree, fRotate,
             pTransformMatrix->translateX, pTransformMatrix->translateY,
             fFactorX * pTransformMatrix->scaleX, fFactorY * pTransformMatrix->scaleY);
 

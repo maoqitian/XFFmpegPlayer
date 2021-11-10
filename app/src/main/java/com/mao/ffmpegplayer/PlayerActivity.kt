@@ -121,7 +121,7 @@ class PlayerActivity :AppCompatActivity(),SurfaceHolder.Callback, FFMediaPlayer.
     }
 
     override fun surfaceDestroyed(surfaceHolder: SurfaceHolder) {
-        Log.d("maoqitian", "surfaceDestroyed() called with: surfaceHolder = [" + surfaceHolder + "]");
+        Log.d("maoqitian", "surfaceDestroyed() called with: surfaceHolder = [$surfaceHolder]");
         mMediaPlayer?.unInit()
     }
 
